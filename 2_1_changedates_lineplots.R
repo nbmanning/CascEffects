@@ -11,6 +11,13 @@
 # to be the ending year (e.g. Brazil Year of Soybean Production 
 # Stat = 2012, Brazil HMY = 2011-2012, USA HMY = 2012-2013) 
 
+# Created: Feb 2024
+# Last Updated: March 4, 2024
+
+# Working Notes:
+## 3/4/24: Currently working to remove the duplicate legends and clean the 
+## script by creating a function to plot the harvest + MY data
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 rm(list = ls())
@@ -46,7 +53,9 @@ F_add_marketyear <- function(df, year_col, area_col){
 
 load("../Data_Derived/prod_price_yield_exports.RData")
 
-## 1.0 : Create Plots 
+## 1.0 : Create Plotting Function --------
+
+
 ## 1.1: Production --------
 
 ### 1.1.1: Regional (US-MW & Cerrado) -----
