@@ -1,4 +1,4 @@
-# title: 2_PlotFigure2.R
+# title: 2_2_figure_CerradoStateDiffs.R
 # author: Nick Manning
 # purpose: Get Change in Production and Value at the state level 
 # Notes:
