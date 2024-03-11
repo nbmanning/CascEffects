@@ -5,11 +5,15 @@
 ## Use of USDA QuickStats requires a Key
 
 # # # # # # # # 
+
 # 0: Load Libraries & Set Constants -----
 
 # libraries
-library(tidyverse)
-library(sidrar)
+library(tidyverse) 
+library(sidrar) # download BR data
+library(geobr) # get BR shapefiles
+library(classInt) # plotting in intervals
+library(patchwork) # getting plots together in one figure
 
 # constants
 year_range <- 2000:2020
@@ -61,7 +65,8 @@ prod_BR <- prod_BR %>%
   #select(yr, state, prod, country)
 
 # calculate differences
-prod_BR_diff <- prod_BR %>% 
+# do this the manual way to compare with function - it works! now OMIT.  
+test_prod_BR_diff <- prod_BR %>% 
   group_by(state) %>% 
   mutate(
     # Difference = 2012 - 2011 per state
@@ -75,50 +80,69 @@ prod_BR_diff <- prod_BR %>%
     value_diff_pct = ((prod_value - lag(prod_value))/lag(prod_value))*100,
   )
 
+# function for defining years and calculating differences 
+# e.g. year1 = 2012, year2 = 2014, then diff = 2014value - 2012value
+
+F_calc_diff <- function(data, year1, year2){
+  lagtime <- year2 - year1
+  newdf <- data %>% 
+    group_by(state) %>% 
+    mutate(
+      # Difference = 2012 - 2011 per state
+      production_diff = production - lag(production, n = lagtime),
+      yield_diff = yield - lag(yield, n = lagtime),
+      value_diff = prod_value - lag(prod_value, n = lagtime),
+      
+      # Percent Change = ( (2012value - 2011value) / 2011value ) *100
+      production_diff_pct = ((production - lag(production, n = lagtime))/lag(production, n = lagtime))*100,
+      yield_diff_pct = ((yield - lag(yield, n = lagtime))/lag(yield, n = lagtime))*100,
+      value_diff_pct = ((prod_value - lag(prod_value, n = lagtime))/lag(prod_value, n = lagtime))*100,
+      
+      # add labels to track
+      years = as.character(paste(year2, "-", year1))
+    )
+}
+
+# test; OMIT, incorporated into function
+# prod_BR_diff <- F_calc_diff(prod_BR, 2012, 2013)
+
 # 4: Get Shapefile & Data ----
 # download state shapefile
-library(geobr)
 shp_muni <- read_state(year=2010)
-shp_muni <- shp_muni %>% select(
-  abbrev_state, geom
-)
+shp_muni <- shp_muni %>% 
+  select(abbrev_state, geom)
 
 ## 4.1 Join -----
 # join df's to add the difference data
-prod_BR_diff <- prod_BR_diff %>% 
-  select(yr, state_name, state, production, yield, production_value, production_diff, yield_diff, value_diff,production_diff_pct, yield_diff_pct, value_diff_pct) %>%
-  rename(abbrev_state = state)
+# OMIT: incorporated into function
+# prod_BR_diff <- prod_BR_diff %>% 
+#   select(yr, state_name, state, production, yield, prod_value, production_diff, yield_diff, value_diff,production_diff_pct, yield_diff_pct, value_diff_pct) %>%
+#   rename(abbrev_state = state)
+# 
+# df_state <- left_join(prod_BR_diff, shp_muni, by = "abbrev_state")
 
-df_state <- left_join(prod_BR_diff, shp_muni, by = "abbrev_state")
 
 # 5: Plot --------
 
-## 5.1: plot one to test fxn ------------
-df_state1 <- df_state %>% 
-  filter(yr == 2014)
+yr1 <- 2012
+yr2 <- 2017
+
+# 5.1: Establish plotting the difference between two years 
+# this new fxn is flexible to calculating the difference between years, prod_BR_diff only used 2012 and 2013
+F_plot_gg_diffpct <- function(data, var, year1, year2){
+
+  # calculate the difference between the two years 
+  data <- F_calc_diff(data, year1, year2)
   
-ggplot(df_state1)+
-  geom_sf(aes(fill = yield_diff_pct, geometry = geom), col = "darkgray", linewidth = 0.1)+
-  theme_bw()+
-  #scale_fill_brewer(palette = "PiYG", direction = 1, drop = F)
-  scale_fill_distiller(palette = "PiYG", direction = 1)+
-  labs(
-    title = paste("Cerrado % Change in",
-                  str_to_title(paste(
-                    y_var, y_var_metric,
-                    "from", yr-1, "to", yr))),
-    fill = str_to_title(paste(
-      y_var_metric,
-      "% Change"))
-  )
-
-
-# # # # # # # # # # # # # # # 
-library(classInt)
-F_plot_gg_diffpct <- function(data, var, yr_choice){
+  # rename for joining
+  data <- data %>% rename(abbrev_state = state)
+  
+  
+  # join to shp_muni
+  data <- left_join(data, shp_muni, by = "abbrev_state")
 
   # filter and set variables
-  data <- data %>% filter(yr == yr_choice)
+  # data <- data %>% filter(yr == yr_choice)
   y_var <- as.character(var)
   y_var_title <- str_to_title(sub("*_diff_pct","",y_var))
 
@@ -144,20 +168,22 @@ F_plot_gg_diffpct <- function(data, var, yr_choice){
     theme_bw()+
     scale_fill_brewer(palette = "PiYG", direction = 1, drop = F)+
     labs(
-      title = paste("Cerrado States % Change in",
+      title = paste("% Change in",
                     str_to_title(paste(
                       #y_var_crop, y_var_metric,
                       y_var_title,
-                      "from", yr_choice-1, "to", yr_choice))),
-      fill = str_to_title(paste(
-        y_var_title,
-        "% Change"))
+                      "from", year1, "to", year2))),
+      fill = "% Change",
+      # fill = str_to_title(paste(
+      #   y_var_title,
+      #   "% Change")),
+      x = "",
+      y = ""
     )
-  #lines(shp_br_cerr_states, lwd = 0.8, lty = 3, col = "darkgray")
 
   # save figure
   ggsave(paste0("../Figures/CerradoStates/",
-                "gg_", y_var, "_", yr_choice-1, yr_choice,
+                "gg_", y_var, "_", year1, year2,
                 ".png"),
          plot = p)
 
@@ -165,8 +191,32 @@ F_plot_gg_diffpct <- function(data, var, yr_choice){
 
 }
 
-F_plot_gg_diffpct(df_state, "yield_diff_pct", 2013)
+# get plots 
+(p_value_diff_pct <- F_plot_gg_diffpct(prod_BR, "value_diff_pct", yr1, yr2))
+(p_prod_diff_pct <- F_plot_gg_diffpct(prod_BR, "production_diff_pct", yr1, yr2))
+(p_yield_diff_pct <- F_plot_gg_diffpct(prod_BR, "yield_diff_pct", yr1, yr2))
 
+# plot together 
+p1 <- p_value_diff_pct +  p_prod_diff_pct + p_yield_diff_pct
+
+p2 <- p1 +
+  plot_layout(nrow = 1, guides = "collect") & 
+  theme(legend.position = "right") & 
+  theme(legend.text = element_text(size = 15)) & 
+  theme(legend.title = element_text(size = 15))
+
+p2
+
+ggsave(filename = paste0("../Figures/CerradoStates/Cerrado_ValueProdYield",
+                         yr1, "_", yr2, ".png"),
+       p2, height = 12, width = 18, 
+       dpi = 300) 
+
+
+
+
+
+# GRAVEYARD -----------------
 # # # # # # # # # # # # # # #
 
 
@@ -224,19 +274,23 @@ F_plot_gg_diffpct(df_state, "yield_diff_pct", 2013)
 
 
 # # # # # # # # # # # # # # # 
-p <- ggplot(data)+
-  geom_sf(aes(fill = DiffCut), col = "darkgray", linewidth = 0.02)+
+
+## 5.1: plot one to test fxn ------------
+df_state1 <- df_state %>% 
+  filter(yr == 2014)
+
+ggplot(df_state1)+
+  geom_sf(aes(fill = yield_diff_pct, geometry = geom), col = "darkgray", linewidth = 0.1)+
   theme_bw()+
-  scale_fill_brewer(palette = "PiYG", direction = 1, drop = F)+
+  #scale_fill_brewer(palette = "PiYG", direction = 1, drop = F)
+  scale_fill_distiller(palette = "PiYG", direction = 1)+
   labs(
-    title = paste("US-MW % Change in",
+    title = paste("Cerrado % Change in",
                   str_to_title(paste(
-                    y_var_crop, y_var_metric,
+                    y_var, y_var_metric,
                     "from", yr-1, "to", yr))),
     fill = str_to_title(paste(
       y_var_metric,
       "% Change"))
   )
-
-## 5.2: plot Value
 
