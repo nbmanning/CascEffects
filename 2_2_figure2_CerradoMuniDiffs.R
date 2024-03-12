@@ -16,7 +16,7 @@ library(sidrar) # download BR data
 library(geobr) # get BR shapefiles
 library(classInt) # plotting in intervals
 library(patchwork) # getting plots together in one figure
-
+library(RColorBrewer)
 # 0: Load Libraries --------
 rm(list = ls())
 library(tidyverse)
@@ -231,43 +231,7 @@ test_df %>%
 test_df_soy <-test_df %>% 
   select(NM_MUN, SIGLA, CODE, year, soy_yield, soy_prod, soy_area)
 
-# calculate differences
-# do this the manual way to compare with function - it works! now OMIT.  
-test_df_soy_diff <- test_df_soy %>% 
-  group_by(CODE) %>% 
-  mutate(
-    # Difference = 2012 - 2011 per state
-    diff_soy_prod = soy_prod - lag(soy_prod),
-    diff_soy_yield = soy_yield - lag(soy_yield),
-    diff_soy_area = soy_area - lag(soy_area),
-    
-    # Percent Change = ( (2012value - 2011value) / 2011value ) *100
-    diff_pct_soy_prod = ((soy_prod - lag(soy_prod))/lag(soy_prod))*100,
-    diff_pct_soy_yield = ((soy_yield - lag(soy_yield))/lag(soy_yield))*100,
-    diff_pct_soy_area = ((soy_area - lag(soy_area))/lag(soy_area))*100,
-  )
-
-
-# F_calc_diff <- function(data, year1, year2){
-#   lagtime <- year2 - year1
-#   newdf <- data %>% 
-#     group_by(CODE) %>% 
-#     mutate(
-#       # Difference = 2012 - 2011 per state
-#       diff_soy_prod = soy_prod - lag(soy_prod, n = lagtime),
-#       diff_soy_yield = soy_yield - lag(soy_yield, n = lagtime),
-#       diff_soy_area = soy_area - lag(soy_area, n = lagtime),
-#       
-#       # Percent Change = ( (2012value - 2011value) / 2011value ) *100
-#       diff_pct_soy_prod = ((soy_prod - lag(soy_prod, n = lagtime))/lag(soy_prod, n = lagtime))*100,
-#       diff_pct_soy_yield = ((soy_yield - lag(soy_yield, n = lagtime))/lag(soy_yield, n = lagtime))*100,
-#       diff_pct_soy_area = ((soy_area - lag(soy_area, n = lagtime))/lag(soy_area, n = lagtime))*100,
-#     
-#       # add labels to track
-#       years = as.character(paste(year2, "-", year1))
-#     )
-# }
-
+# add function, comment out 
 F_calc_diff <- function(data, year1, year2){
   lagtime <- year2 - year1
   newdf <- data %>%
@@ -278,10 +242,10 @@ F_calc_diff <- function(data, year1, year2){
       yield_diff = soy_yield - lag(soy_yield, n = lagtime),
       area_diff = soy_area - lag(soy_area, n = lagtime),
 
-      # Percent Change = ( (2012value - 2011value) / 2011value ) *100
-      production_diff_pct = ((soy_prod - lag(soy_prod, n = lagtime))/lag(soy_prod, n = lagtime))*100,
-      yield_diff_pct = ((soy_yield - lag(soy_yield, n = lagtime))/lag(soy_yield, n = lagtime))*100,
-      area_diff_pct = ((soy_area - lag(soy_area, n = lagtime))/lag(soy_area, n = lagtime))*100,
+      # # Percent Change = ( (2012value - 2011value) / 2011value ) *100
+      # production_diff_pct = ((soy_prod - lag(soy_prod, n = lagtime))/lag(soy_prod, n = lagtime))*100,
+      # yield_diff_pct = ((soy_yield - lag(soy_yield, n = lagtime))/lag(soy_yield, n = lagtime))*100,
+      # area_diff_pct = ((soy_area - lag(soy_area, n = lagtime))/lag(soy_area, n = lagtime))*100,
 
       # add labels to track
       years = as.character(paste(year2, "-", year1))
@@ -293,65 +257,87 @@ test_df_soy_diff <- F_calc_diff(test_df_soy, 2012, 2013)
 
 # 4: Get Shapefile & Data ----
 # download state shapefile
-shp_st <- read_state(year = 2010)
+#shp_st <- read_state(year = 2010)
 shp_muni <- read_municipality(year=2010)
 
 shp_muni <- shp_muni %>% 
   select(code_muni, geom)
 
 ## 4.1 Join -----
-# join df's to add the difference data
-# OMIT: incorporated into function
-# prod_BR_diff <- prod_BR_diff %>% 
-#   select(yr, state_name, state, production, yield, prod_value, production_diff, yield_diff, value_diff,production_diff_pct, yield_diff_pct, value_diff_pct) %>%
-#   rename(abbrev_state = state)
-# 
-# df_state <- left_join(prod_BR_diff, shp_muni, by = "abbrev_state")
-
+# drop old geometry to merge with the shp_muni geometry
 test_df_soy_diff2 <- test_df_soy_diff %>%
   st_drop_geometry() %>%
   rename(code_muni = CODE) %>%
   drop_na()
 
+
+# works up to here #
+
 df_muni <- left_join(test_df_soy_diff2, shp_muni, by = "code_muni")
+
 #df_muni <- st_join(test_df_soy_diff, shp_muni, by = "code_muni") # Error in wk_handle.wk_wkb(wkb, s2_geography_writer(oriented = oriented,  : Loop 0 is not valid: Edge 253 crosses edge 255
 
 
 # 4: Plot Differences (Real Data) -------------
-########
+
+## 4.1: Plot Manually --------
+
 # filter and set variables
-# data <- data %>% filter(yr == yr_choice)
-test_y_var <- as.character("production_diff")
+test_y_var <- as.character("yield_diff")
 test_y_var_title <- str_to_title(sub("*_diff","",test_y_var))
 
 # set classes
-#class <- classIntervals(round(data[[y_var]]), n = 11, style = "fisher")
 
+# TEST 1: Try a different break style that can be automatically adjusted
+# See Here: https://handsondataviz.org/design-choropleth.html
+map_sty <- "pretty"
 class <- classIntervals(
-  df_muni[[test_y_var]],
-  fixedBreaks =
-    #c(-100, -80, -60, -40, -20, -1,1, 20, 40, 60, 80, 100)
-    c(-50, -40, -30, -20, -10, -0.1,0.1, 10, 20, 30, 40, 50),
-  style = "fixed")
+  round(
+    df_muni2[[test_y_var]], 
+    digits = 2),
+  digits = 2,
+  n = 11,
+  
+  style = map_sty
+  #style = "jenks", # don't like because we need to reduce the number of classes and it doesn't center 
+  #style = "pretty", # this is fine as it center at 0 but doesn't get the range (e.g. first box is 0-50,000)
+  #style = "equal" # i like equal! This doesn't look too bad
+)
+
+# STOP USING MANUAL BREAKS - this increases bias in data and decreases reproducibility
+
+# TEST 2: Manually set breaks - works but will need to set three distinct types - one for yield, one for prod, one for area
+# class <- classIntervals( # doesn't work - getting NA values for class where there shouldn't be 
+#   df_muni[[test_y_var]],
+#   fixedBreaks =
+#     #c(-100, -80, -60, -40, -20, -1,1, 20, 40, 60, 80, 100)
+#     #c(-50, -40, -30, -20, -10, -0.1,0.1, 10, 20, 30, 40, 50),
+#     c(-100000, -50000, -25000, -10000, -1000, -0.1, 0.1, 1000, 10000, 25000, 50000, 100000),
+#   style = "fixed")
 
 # set new column with the breaks for mapping
-# data <- data %>%
-#   mutate(DiffCut = cut(y_var, class$brks, include.lowest = T))
-data$DiffCut <- cut(data[[y_var]], class$brks, include.lowest = T)
+df_muni2$DiffCut <- cut(df_muni2[[test_y_var]], class$brks, include.lowest = T)
 
-# plot changes
-p <- ggplot(data)+
+num_cuts <- as.numeric((length(levels(df_muni2$DiffCut))))
+test_pal <- colorRampPalette(brewer.pal(11,"PiYG"))
+
+t <- as.numeric(length(levels(df_muni2$DiffCut)))
+str(t)
+
+# plot changes - with breaks 
+p <- ggplot(df_muni2)+
   geom_sf(aes(fill = DiffCut, geometry = geom), col = "darkgray", linewidth = 0.02)+
   #geom_sf_text(aes(label = code_muni, geometry = geom), colour = "darkgray")+
   theme_bw()+
-  scale_fill_brewer(palette = "PiYG", direction = 1, drop = F)+
+  #scale_fill_brewer(palette = "PiYG", direction = 1, drop = F, na.value = "black")+
+  scale_fill_manual(values = test_pal(num_cuts), drop = F, na.value = "blue")+
   labs(
-    title = paste("% Change in",
+    title = paste("Change in",
                   str_to_title(paste(
                     #y_var_crop, y_var_metric,
-                    y_var_title,
-                    "from", year1, "to", year2))),
-    fill = "% Change",
+                    test_y_var_title,
+                    "from", yr1, "to", yr2))),
+    fill = "Change (1000)",
     # fill = str_to_title(paste(
     #   y_var_title,
     #   "% Change")),
@@ -359,6 +345,32 @@ p <- ggplot(data)+
     y = ""
   )
 
+p
+
+# plot changes - continuous
+limit <- max(abs(df_muni[[test_y_var]])) * c(-1, 1)/4
+
+p <- ggplot(df_muni)+
+  geom_sf(aes(fill = !! sym(test_y_var), geometry = geom), col = "darkgray", linewidth = 0.02)+
+  #geom_sf_text(aes(label = code_muni, geometry = geom), colour = "darkgray")+
+  theme_bw()+
+  #scale_fill_brewer(palette = "PiYG", direction = 1, drop = F, na.value = "black")+
+  scale_fill_distiller(palette = "PiYG", direction = 1, na.value = "black", limit = limit)+
+  labs(
+    title = paste("Raw Change in",
+                  str_to_title(paste(
+                    #y_var_crop, y_var_metric,
+                    test_y_var_title,
+                    "from", yr1, "to", yr2))),
+    fill = "Raw Change",
+    # fill = str_to_title(paste(
+    #   y_var_title,
+    #   "% Change")),
+    x = "",
+    y = ""
+  )
+
+p
 
 ########
 yr1 <- 2012
@@ -370,8 +382,14 @@ F_plot_gg_diffpct <- function(data, var, year1, year2){
   # calculate the difference between the two years 
   data <- F_calc_diff(data, year1, year2)
   
+  # divide by 1000 for easier legends
+  #data <- data %>% mutate_at(vars(soy_yield:area_diff), list(~./1000))
+  
   # rename for joining
-  data <- data %>% st_drop_geometry() %>%  rename(code_muni = CODE)
+  data <- data %>% 
+    st_drop_geometry() %>%
+    rename(code_muni = CODE) %>%
+    drop_na()
   
   
   # join to shp_muni
@@ -383,33 +401,47 @@ F_plot_gg_diffpct <- function(data, var, year1, year2){
   y_var_title <- str_to_title(sub("*_diff","",y_var))
   
   # set classes
-  #class <- classIntervals(round(data[[y_var]]), n = 11, style = "fisher")
-  
   class <- classIntervals(
-    data[[y_var]],
-    fixedBreaks =
-      #c(-100, -80, -60, -40, -20, -1,1, 20, 40, 60, 80, 100)
-      c(-50, -40, -30, -20, -10, -0.1,0.1, 10, 20, 30, 40, 50),
-    style = "fixed")
+    round(
+      data[[y_var]], 
+      digits = 2),
+    digits = 2,
+    n = 11,
+    
+    style = map_sty)
+  # class <- classIntervals(
+  #   data[[y_var]],
+  #   fixedBreaks =
+  #     #c(-100, -80, -60, -40, -20, -1,1, 20, 40, 60, 80, 100)
+  #     #c(-50, -40, -30, -20, -10, -0.1,0.1, 10, 20, 30, 40, 50),
+  #     c(-100000, -50000, -25000, -10000, -1000, -0.1, 0.1, 1000, 10000, 25000, 50000, 100000),
+  #     style = "fixed")
   
   # set new column with the breaks for mapping
   # data <- data %>%
   #   mutate(DiffCut = cut(y_var, class$brks, include.lowest = T))
   data$DiffCut <- cut(data[[y_var]], class$brks, include.lowest = T)
   
+  # get the number of factors used 
+  num_cut <- as.numeric((length(levels(data$DiffCut))))
+  
+  # get a palette based on the number of levels in our DiffCut map
+  pal <- colorRampPalette(brewer.pal(11,"PiYG"))
+  
   # plot changes
   p <- ggplot(data)+
     geom_sf(aes(fill = DiffCut, geometry = geom), col = "darkgray", linewidth = 0.02)+
     #geom_sf_text(aes(label = code_muni, geometry = geom), colour = "darkgray")+
     theme_bw()+
-    scale_fill_brewer(palette = "PiYG", direction = 1, drop = F)+
+    #scale_fill_brewer(palette = pal, direction = 1, drop = F)+
+    scale_fill_manual(values = pal(num_cut), drop = F, na.value = "blue")
     labs(
-      title = paste("% Change in",
+      title = paste("Raw Change in",
                     str_to_title(paste(
                       #y_var_crop, y_var_metric,
                       y_var_title,
                       "from", year1, "to", year2))),
-      fill = "% Change",
+      fill = "Raw Change",
       # fill = str_to_title(paste(
       #   y_var_title,
       #   "% Change")),
@@ -428,7 +460,13 @@ F_plot_gg_diffpct <- function(data, var, year1, year2){
 }
 
 # get plots 
-str(test_df_soy_diff)
-# (p_value_diff_pct <- F_plot_gg_diffpct(test_df_soy, "value_diff_pct", yr1, yr2))
+map_sty <- "pretty"
+
+#style = "jenks", # don't like because we need to reduce the number of classes and it doesn't center 
+#style = "pretty", # this is fine as it center at 0 but doesn't get the range (e.g. first box is 0-50,000)
+#style = "equal" # i like equal! This doesn't look too bad
+
+
 (p_prod_diff_pct <- F_plot_gg_diffpct(test_df_soy, "production_diff", yr1, yr2))
-(p_yield_diff_pct <- F_plot_gg_diffpct(test_df_soy, "yield_diff_pct", yr1, yr2))
+(p_area_diff_pct <- F_plot_gg_diffpct(test_df_soy, "area_diff", yr1, yr2))
+(p_yield_diff_pct <- F_plot_gg_diffpct(test_df_soy, "yield_diff", yr1, yr2))
