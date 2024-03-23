@@ -8,6 +8,10 @@
 # Created: 3/11/24
 # Last Edited: March 2024
 
+# To-Do:
+## Add Production Value per county (can we even do this?)
+## Create IALE plots of a 1:1 plot between SG and different years
+
 # # # # # # # # 
 
 # 0: Set up Env --------
@@ -291,6 +295,7 @@ shp_muni <- read_municipality(year=2010)
 
 shp_muni <- shp_muni %>% 
   select(code_muni, geom)
+
 
 ## 4.1 Join -----
 # drop old geometry to merge with the shp_muni geometry
@@ -606,6 +611,8 @@ F_plot_gg_diffcont <- function(data, var, year1, year2){
 
 
 # create three test datasets by running through soy with different years 
+#crop <- "soy"
+
 t_1213 <- F_calc_diff(test_df_soy, 2012, 2013)
 t_1215 <- F_calc_diff(test_df_soy, 2012, 2015)
 t_1217 <- F_calc_diff(test_df_soy, 2012, 2017)
@@ -618,8 +625,25 @@ t <- rbind(
   t_1215, 
   t_1217#, 
   #t_1222
-) 
-t <- t %>% rename(geom = geometry)
+)
+
+names(t)
+
+t <- t %>% 
+  rename(
+    s_y = soy_yield,
+    s_p = soy_prod,
+    s_a = soy_area,
+    sp_dif = production_diff,
+    sa_dif = area_diff,
+    sy_dif = yield_diff
+  )
+
+#### SAVE t ---------------
+st_write(t, paste0("../Data_Derived/", "soy", "_diff_yap_", "y12012_201320152017.shp"),
+         write_dsn_opts = list(quiet = FALSE), delete_layer = T)
+
+#st_write(t, "../Data_Derived/soy_diff_yap_")
 
 F_facet <- function(data, var){
   
@@ -630,7 +654,7 @@ F_facet <- function(data, var){
   p <- ggplot(data)+
     geom_sf(aes(fill = !!sym(var), geometry = geom), col = "darkgray", linewidth = 0.02)+
     theme_bw()+
-    facet_wrap(~years)+
+    facet_wrap(~years, nrow = 1)+
     #scale_fill_brewer(palette = pal, direction = 1, drop = F)+
     # use the custom theme 
     scale_fill_scico(palette = "bam", direction = 1, na.value = "blue",
@@ -641,7 +665,7 @@ F_facet <- function(data, var){
       #                 "production",
       #                 "from", year1, "to", year2))),
       # fill = "Raw Change in \n Production",
-      fill = str_to_title(paste(y_var_title, " Change")),
+      fill = str_to_title(paste(y_var_title, "Change")),
       x = "",
       y = ""
     )
