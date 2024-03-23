@@ -74,7 +74,7 @@ prod_USMW_states <- raw_prod_USMW %>%
 # summarize to regional level
 prod_USMW <- prod_USMW_states %>% 
   group_by(yr, country) %>%
-  dplyr::summarize(prod = round(mean(prod), digits = 2)) %>% 
+  dplyr::summarize(prod = round(sum(prod), digits = 2)) %>% 
   mutate(description = "US-MW States")
 
 
@@ -94,7 +94,7 @@ raw_sidra <- get_sidra(x = 1612,
 # colnames(raw_sidra)
 
 # clean and translate columns
-prod_BRCerr_states <- raw_sidra %>% 
+prod_BR <- raw_sidra %>% 
   select("Unidade da Federação (Código)", "Unidade da Federação", "Ano", "Variável", "Valor") %>% 
   rename(
     "state_code" = "Unidade da Federação (Código)",
@@ -108,7 +108,8 @@ prod_BRCerr_states <- raw_sidra %>%
          yr = as.double(yr)) %>% 
   select(.,c("yr", "variable", "value", "state_name"))
 
-prod_BRCerr_states <- left_join(prod_BRCerr_states, BR_abbvs)
+prod_BR <- left_join(prod_BR, BR_abbvs)
+prod_BRCerr_states <- filter(prod_BR, state %in% BRCerr_state_abbvs)
 
 # make data wide to match US data and make it easier to merge
 prod_BRCerr_states <- pivot_wider(prod_BRCerr_states, names_from = "variable")
@@ -122,12 +123,71 @@ prod_BRCerr_states <- prod_BRCerr_states %>%
 prod_BRCerr <- prod_BRCerr_states %>% 
   na.omit() %>% 
   group_by(yr) %>%
-  dplyr::summarize(prod = round(mean(prod), digits = 2)) %>% 
+  dplyr::summarize(prod = round(sum(prod), digits = 2)) %>% 
   mutate(description = "States with Cerrrado",
          country = "Brazil")
 
-## 1.3: Get Prod (US&BR) ----
-prod_USMW_BRCerr <- rbind(prod_BRCerr, prod_USMW)
+## 1.3: Get Prod (USMW & BRCerr) ----
+df_prod_USMW_BRCerr <- rbind(prod_BRCerr, prod_USMW)
+df_prod_USMW_BRCerr <- df_prod_USMW_BRCerr  %>% 
+  filter(yr >= 2007 & yr <= 2017)
+
+## 1.4: Nationwide Production -----
+### 1.4.1: BR Prod ------
+raw_sidra_BR <- get_sidra(x = 1612, 
+                       variable = 214, #109 is yield # production and yield # or for first six (excluding value of production) c(109, 1000109, 216, 1000216,214, 112) 
+                       period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
+                       geo = "Brazil", # Brazil, State, or Município
+                       geo.filter = NULL,
+                       classific = "c81",
+                       category = list(2713), # Soja (em grão)
+                       header = T,
+                       format = 3)
+
+prod_BR <- raw_sidra_BR %>% 
+  select("Nível Territorial", "Ano", "Valor") %>% 
+  rename(
+    "country" = "Nível Territorial",
+    "yr" = "Ano",    
+    "prod" = "Valor") %>% 
+  mutate(yr = as.double(yr))
+
+
+### 1.4.2: US Prod ------
+# download
+raw_prod_US <- getQuickstat(
+  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  program = "SURVEY",
+  data_item = "SOYBEANS - PRODUCTION, MEASURED IN BU",
+  commodity = "SOYBEANS",
+  geographic_level = "NATIONAL",
+  # state = c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
+  #           "IOWA", "MINNESOTA", "WISCONSIN", "ILLINOIS", "INDIANA", "OHIO", "MICHIGAN"),
+  year = paste(year_range),
+    geometry = F)  
+
+# clean
+prod_US <- raw_prod_US %>% 
+
+  # clean to remove Prospects (Sept/Oct/Nov Crop Outlooks)
+  filter(reference_period_desc == "YEAR") %>% 
+  
+  # select certain columns and rename for clarity
+  select(c("year", "state_alpha", "Value")) %>% 
+  rename("yr" = "year",
+         "country" = "state_alpha",
+         "prod" = "Value") %>% 
+  
+  # convert from bushels to metric tons source: https://grains.org/markets-tools-data/tools/converting-grain-units/
+  mutate(prod = prod*0.0272155)
+
+### 1.4.3: Get US & BR National Production ---------
+df_prod_USBR <- rbind(prod_BR, prod_US)
+df_prod_USBR <- df_prod_USBR %>% 
+  filter(yr >= 2007 & yr <= 2017) %>%  
+  mutate(country = str_replace_all(country, "Brasil", "Brazil"))
+
+
 
 # 2: Exports (Value; USD) ------------
 
@@ -141,7 +201,8 @@ raw_exports <- read.csv("../Data_Source/UNComtrade_USBR_HS1201_20072018.csv")
 exports_usbr <- raw_exports %>% 
   select(c("Period", "ReporterDesc", "PartnerISO", "PrimaryValue")) %>% 
   filter(ReporterDesc %in% c("USA", "Brazil")) %>%
-  filter(Period >= 2007 & Period <= 2017)
+  filter(Period >= 2007 & Period <= 2017) %>% 
+  mutate(ReporterDesc = str_replace_all(ReporterDesc, "USA", "US"))
 
 # get the world quantity of exports since UN Comtrade was missing them
 # nope, missing them for a reason. 2012 and 2013 BR --> China QTY is missing so can't sum
@@ -158,13 +219,24 @@ exports_world <- exports_usbr %>%
 exports_usbr_china <- exports_usbr %>%
   filter(PartnerISO == "CHN")
 
-## 3.3: Get Exports ---------
-exports_USBR_world <- exports_world
-exports_USBR_china <- exports_usbr_china
+## 2.3: Get Exports ---------
+df_exports_USBR_world <- exports_world
+df_exports_USBR_world <- df_exports_USBR_world %>% 
+  filter(Period >= 2007 & Period <= 2017) %>%  
+  mutate(ReporterDesc = str_replace_all(ReporterDesc, "USA", "US"),
+         description = "Export Value (USD) from US and Brazil to the World")
+
+df_exports_USBR_china <- exports_usbr_china
+df_exports_USBR_china <- df_exports_USBR_china %>% 
+  filter(Period >= 2007 & Period <= 2017) %>%  
+  mutate(ReporterDesc = str_replace_all(ReporterDesc, "USA", "US"),
+         description = "Export Value (USD) from US and Brazil to China")
 
 # 3: Price (USD / bu) ---------------------
 
-## 3.1: US-MW Price (USD/bu) ---------
+## 3.1: US Price -------
+
+### 3.1.1: US-MW Regional Price (USD/bu) ---------
 
 # note: daily is available from macrotrends (see thesis data), but USDA is more reliable
 
@@ -199,6 +271,7 @@ price_USMW_states <- raw_price_USMWst %>%
   rename("yr" = "year",
          "state" = "state_alpha",
          "mo" = "reference_period_desc") %>% 
+  # Change from MONTH YEAR to actual date format (e.g. NOV 2016 --> 01/01/2016)
   mutate(country = "US",
          year_month_abv = paste(mo, yr),
          date = dmy(paste(1, year_month_abv)))
@@ -208,6 +281,38 @@ price_USMW_states <- raw_price_USMWst %>%
 price_USMW <- price_USMW_states %>% 
   group_by(date, country) %>% 
   summarise(price = round(mean(price), digits = 2))
+
+### 3.1.2: US (National) Price -------
+
+raw_price_US <- getQuickstat(
+  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  program = "SURVEY",
+  data_item = "SOYBEANS - PRICE RECEIVED, MEASURED IN $ / BU",
+  commodity = "SOYBEANS",
+  geographic_level = "NATIONAL",
+  # state = c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
+  #           "IOWA", "MINNESOTA", "WISCONSIN", "ILLINOIS", "INDIANA", "OHIO", "MICHIGAN"),
+  year = paste(year_range),
+  geometry = F) %>%
+  dplyr::rename(price = Value)
+
+# clean
+price_US <- raw_price_US %>% 
+  
+  # clean to remove Prospects (Sept/Oct/Nov Crop Outlooks)
+  filter(freq_desc == "MONTHLY") %>% 
+  
+  # select relevant variables
+  select(c("year", "reference_period_desc", "state_alpha", "price")) %>% 
+  rename("yr" = "year",
+         "state" = "state_alpha",
+         "mo" = "reference_period_desc") %>% 
+  
+  # Change from MONTH YEAR to actual date format (e.g. NOV 2016 --> 01/01/2016)
+  mutate(country = "US",
+         year_month_abv = paste(mo, yr),
+         date = dmy(paste(1, year_month_abv))) %>% 
+  select(date, country, price)
 
 ## 3.2 BR Price (USD --> USD/bu) -------
 
@@ -251,21 +356,171 @@ price_BR_monthly <- price_BR_monthly %>%
   rename(date = mo)
 
 ## 3.3: Get Price (US&BR) -----
-price_USMW_BRCerr <- rbind(price_BR_monthly, price_USMW)
+df_price_USMW_BRCerr <- rbind(price_BR_monthly, price_USMW)
+df_price_USMW_BRCerr <- df_price_USMW_BRCerr %>% 
+  filter(year(date) >= 2007 & year(date) <= 2017)
+
+# 4: Yield: -------
+
+## 4.1 US Yield --------
+raw_yield_US <- getQuickstat(
+  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  program = "SURVEY",
+  data_item = "SOYBEANS - YIELD, MEASURED IN BU / ACRE",
+  commodity = "SOYBEANS",
+  geographic_level = "NATIONAL",
+  # state = c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
+  #           "IOWA", "MINNESOTA", "WISCONSIN", "ILLINOIS", "INDIANA", "OHIO", "MICHIGAN"),
+  year = paste(year_range),
+  geometry = F)  
+
+# clean
+yield_US <- raw_yield_US %>% 
+  
+  # clean to remove Prospects (Sept/Oct/Nov Crop Outlooks)
+  filter(reference_period_desc == "YEAR") %>% 
+  
+  # select certain columns and rename for clarity
+  select(c("year", "state_alpha", "Value")) %>% 
+  rename("yr" = "year",
+         "country" = "state_alpha",
+         "yield" = "Value") %>%   
+  # convert bu/acre to kg/ha
+  # source: US Grain Council
+  # 1 bu = .0272155 metric ton
+  # 1 mt = 1000 kg
+  # 1 acre = 0.40468564 ha
+  # bu/acre * mt/bu * kg/mt * acre/ha = kg/ha
+  mutate(yield = yield * ((0.0272155 * 1000) / 0.40468564) )
+
+## 4.2: BR Yield ------
+raw_yield_BR <- get_sidra(x = 1612, 
+                          variable = 112, #109 is area planted # production and yield # or for first six (excluding value of production) c(109, 1000109, 216, 1000216,214, 112) 
+                          period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
+                          geo = "Brazil", # Brazil, State, or Município
+                          geo.filter = NULL,
+                          classific = "c81",
+                          category = list(2713), # Soja (em grão)
+                          header = T,
+                          format = 3)
+
+yield_BR <- raw_yield_BR %>% 
+  select("Nível Territorial", "Ano", "Valor") %>% 
+  rename(
+    "country" = "Nível Territorial",
+    "yr" = "Ano",    
+    "yield" = "Valor") %>% 
+  mutate(yr = as.double(yr))
 
 
-# 4: Land Transition to Soybean ---------
+## 4.3 Get National Yield (US & BR) -----
+df_yield_USBR <- rbind(yield_BR, yield_US)
+df_yield_USBR <- df_yield_USBR %>% 
+  filter(yr >= 2007 & yr <= 2017) %>%  
+  mutate(country = str_replace_all(country, "Brasil", "Brazil"))
 
-### STEPS to get to trans_BRmunicip_year ###
+## 4.4: US yield (US-MW States) -----
 
-## 4.0: Set Constants ------
-# Set the transition variables to keep 
-list_lvl4_interest <- c("Savanna Formation", "Grassland", "Pasture", "Soy Beans", 
-                        "Other Temporary Crops", "Mosaic of Agriculture and Pasture",
-                        "Sugar Cane", "Other Non Vegetated Area", "Coffe",
-                        "Other Non Forest Natural Formation", "Citrus", "Rice")
+## DATA SOURCE: USDA QuickStats, accessed through tidyUSDA R Package ()
 
-## 4.1: Load land transition data from MapBiomas Collection 6 
+### NOTE: yield comes in bushels but we convert to metric tons
+
+# get raw yielduction data
+raw_yield_USMW <- getQuickstat(
+  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  program = "SURVEY",
+  data_item = "SOYBEANS - YIELD, MEASURED IN BU / ACRE",
+  commodity = "SOYBEANS",
+  geographic_level = "STATE",
+  state = c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
+            "IOWA", "MINNESOTA", "WISCONSIN", "ILLINOIS", "INDIANA", "OHIO", "MICHIGAN"),
+  year = paste(year_range),
+  geometry = F)  
+
+# Clean Data
+yield_USMW_states <- raw_yield_USMW %>% 
+  
+  # clean to remove Prospects (Sept/Oct/Nov Crop Outlooks)
+  filter(reference_period_desc == "YEAR") %>% 
+  
+  # select certain columns and rename for clarity
+  select(c("year", "state_alpha", "Value")) %>% 
+  rename("yr" = "year",
+         "state" = "state_alpha",
+         "yield" = "Value") %>% 
+  
+  # convert from bu/acre to kg/ha 
+  mutate(yield = yield * ((0.0272155 * 1000) / 0.40468564) ,
+         country = "US") 
+
+# summarize to regional level
+yield_USMW <- yield_USMW_states %>% 
+  group_by(yr, country) %>%
+  dplyr::summarize(yield = round(mean(yield), digits = 2)) %>% 
+  mutate(description = "US-MW States")
+
+
+## 4.5 BR yield (Cerrado States) --------
+
+# get state-level data so we can merge to only those states within the extent of the Cerrado
+raw_yield_BR_states <- get_sidra(x = 1612, 
+                       variable =  c(112), # yielduction and yield # or for first six (excluding value of yielduction) c(109, 1000109, 216, 1000216,214, 112) 
+                       period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
+                       geo = "State", # Brazil, State, or Município
+                       geo.filter = NULL,
+                       classific = "c81",
+                       category = list(2713), # Soja (em grão)
+                       header = T,
+                       format = 3)
+
+# colnames(raw_sidra)
+
+# clean and translate columns
+yield_BRCerr_states <- raw_yield_BR_states %>% 
+  select("Unidade da Federação (Código)", "Unidade da Federação", "Ano", "Variável", "Valor") %>% 
+  rename(
+    "state_code" = "Unidade da Federação (Código)",
+    "state_name" = "Unidade da Federação",
+    "yr" = "Ano",
+    "variable" = "Variável",
+    "value" = "Valor") %>%  
+  mutate(
+    #variable = str_replace(variable, "Quantidade produzida", "prod"),
+    variable = str_replace(variable, "Rendimento médio da produção", "yield"),
+    #variable = str_replace(variable, "Área plantada", "ha_planted"),
+    yr = as.double(yr)) %>% 
+  select(.,c("yr", "variable", "value", "state_name"))
+
+yield_BRCerr_states <- left_join(yield_BRCerr_states, BR_abbvs)
+yield_BRCerr_states <- filter(yield_BRCerr_states, state %in% BRCerr_state_abbvs)
+
+# make data wide to match US data and make it easier to merge
+yield_BRCerr_states <- pivot_wider(yield_BRCerr_states, names_from = "variable")
+
+# add country and filter to the same variables as US
+yield_BRCerr_states <- yield_BRCerr_states %>% 
+  mutate(country = "Brazil") %>% 
+  select(yr, state, yield, country)
+
+# summarize to regional level
+yield_BRCerr <- yield_BRCerr_states %>% 
+  na.omit() %>% 
+  group_by(yr) %>%
+  dplyr::summarize(yield = round(mean(yield), digits = 2)) %>% 
+  mutate(description = " Mean States with Cerrrado",
+         country = "Brazil")
+
+## 4.6: Get yield (USMW & BRCerr) ----
+df_yield_USMW_BRCerr <- rbind(yield_BRCerr, yield_USMW)
+df_yield_USMW_BRCerr <- df_yield_USMW_BRCerr %>% 
+  filter(yr >= 2007 & yr <= 2017)
+
+
+# 5: Area Planted: ----------
+
+# 6: Land Transition to Soybean ---------
+
+## 6.1: Load & Clean land transition data from MapBiomas Collection 6 --------
 
 ### NOTE: Collection 7 is out, but Collection 6 is included in R package datazoom.amazonia
 
@@ -283,38 +538,35 @@ list_lvl4_interest <- c("Savanna Formation", "Grassland", "Pasture", "Soy Beans"
 load(file = "../Data_Source/source_mapb_trans_municip.Rdata")
 
 # set to other variable name & get others -- not just soybeans 
-trans_BR <- source_mapb_trans_municip %>% 
-  filter(to_level_4 %in% list_lvl4_interest) %>% 
-  filter(state %in% BRCerr_state_abbvs)
+# trans_BR <- source_mapb_trans_municip %>% 
+#   filter(to_level_4 %in% list_lvl4_interest) 
+
+# filter to just transitioning to soybeans 
+trans_tosoy_BR <- source_mapb_trans_municip %>%
+  filter(to_level_4 == "Soy Beans")
+
 
 # break up intervals into start and end year (going from )
-trans_BR$start_year <- as.numeric(str_sub(trans_BR$year, 1, 4)) 
-trans_BR$end_year <- as.numeric(str_sub(trans_BR$year, -4, -1))
+trans_tosoy_BR$start_year <- as.numeric(str_sub(trans_tosoy_BR$year, 1, 4)) 
+trans_tosoy_BR$end_year <- as.numeric(str_sub(trans_tosoy_BR$year, -4, -1))
 
-str(trans_BR)
-
-# get only the non-subsequent intervals
-# trans_BR_intervals <- trans_BR %>%
-#   filter(end_year != start_year+1)
+str(trans_tosoy_BR)
 
 # keep only consecutive start/end years
 # this means that 2013 captures the 2012-13 harvest year in BR 
-trans_BR <- trans_BR %>% 
+trans_tosoy_BR <- trans_tosoy_BR %>% 
   filter(end_year == start_year+1) %>% 
   select("year", "end_year","start_year","state","municipality","municipality_code",
          "from_level_0", "from_level_1", "from_level_2", "from_level_3", "from_level_4",     
          "to_level_0", "to_level_1", "to_level_2", "to_level_3", "to_level_4",      
          "value")
 
+## 6.2: Aggregate to_level_4 values
+
 # aggregate to yearly transition values by combining all FROM classes per municip per year
+trans_tosoy_BRmunicip_agg <- aggregate(value ~ municipality_code + municipality + state + end_year + to_level_4, trans_tosoy_BR, sum)
 
-#trans_BRmunicip_agg <- aggregate(value ~ territory_id + municipality + state + end_year + to_level_4, trans_BR, sum)
-
-# note to self: missing territory_id, probably called something else. let's try municipality_code first then feature_id
-
-trans_BRmunicip_agg <- aggregate(value ~ municipality_code + municipality + state + end_year + to_level_4, trans_BR, sum)
-
-df_trans_BR <- trans_BRmunicip_agg %>% 
+trans_tosoy_BRmunicip_agg <- trans_tosoy_BRmunicip_agg %>% 
   filter(end_year >= 2000 & end_year <= 2020) %>% # UGHHHHH ONLY up to 2019!!!!!!!! 
   rename(
     "yr" = "end_year",
@@ -322,35 +574,31 @@ df_trans_BR <- trans_BRmunicip_agg %>%
   select(., c("yr","state", "municipality", "municipality_code", "trans")) %>% 
   mutate(country = "Brazil")
 
-# note to self: this is different than the other BR Cerr data, this has more. Thinkging it's because we didn't filter yet.
-R_trans_BRmunicip2 <- df_trans_BR
-# note to self: 425,829 obs after filtering for Cerrado State Names
+#R_trans_tosoy_BRmunicip <- df_trans_tosoy_BR
+trans_tosoy <- trans_tosoy_BRmunicip_agg
 
-unique(R_trans_BRmunicip$municipality)
-unique(R_trans_BRmunicip2$municipality)
-
-## 4.X: set cleaned trans_tosoy data ---------
-load(file = "../Data_Source/trans_BRmunicip_year.R")
-trans_tosoy <- R_trans_BRmunicip
+## (OMIT) 4.X: set cleaned trans_tosoy data 
+#load(file = "../Data_Source/trans_BRmunicip_year.R")
+#trans_tosoy <- R_trans_BRmunicip
 
 
-## 4.3: load municipality shapefile and Cerrado shapefile and intersect -----
+## 6.3: load municipality shapefile and Cerrado shapefile and intersect -----
 
-### 4.3.1: Load municipality shapefile
+### 6.3.1: Load municipality shapefile
 
 # Read all municipalities in the country at a given year
 # to-do: change to shp_br_muni
 shp_muni <- read_municipality(code_muni="all", year=2018)
 # plot(shp_muni)
 
-### 4.3.2: Load Cerrado shapefile ----
+### 6.3.2: Load Cerrado shapefile ----
 shp_br_cerr <- read_biomes(
   year = 2019,
   simplified = T,
   showProgress = T
 ) %>% dplyr::filter(name_biome == "Cerrado")
 
-### 4.3.3: Intersect Cerrado & Muni ----
+### 6.3.3: Intersect Cerrado & Muni ----
 str(shp_br_cerr)
 str(shp_muni)
 
@@ -360,16 +608,105 @@ plot(shp_muni_in_cerr)
 
 shp_code_muni <- shp_muni_in_cerr %>% select(code_muni, geom)
 
-### 4.3.4: get territory codes for municipalities in intersection -----
+### 6.3.4: get territory codes for municipalities in intersection -----
 muni_codes_cerr <- shp_muni_in_cerr$code_muni
 
-### 4.3.5: filter to just the territories (municipalities) within the Cerrado 
+### 6.3.5: filter to just the territories (municipalities) within the Cerrado 
 trans_tosoy_cerrmuni <- trans_tosoy %>% 
   filter(municipality_code %in% muni_codes_cerr)
 
-## 4.4: Aggregate to one value per year  -----
 
+## 6.4: Get Land Transition to Soy  -----
+
+# Aggregate to one value per year
 # agg to one value per entire region per year
 df_trans_to_soy_BRCerr_muni <- trans_tosoy_cerrmuni %>% 
   aggregate(trans ~ yr, ., sum) %>%
   mutate(country = "Brazil")
+
+df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>% filter(yr >= 2007 & yr <= 2017)
+
+# 7: Land Transition with certain classes of interest ------
+
+## 7.0: Set Constants -------
+# Set the transition variables to keep 
+# list_lvl4_classes <- c("Savanna Formation", "Grassland", "Pasture", "Soy Beans", 
+#                         "Other Temporary Crops", "Mosaic of Agriculture and Pasture",
+#                         "Sugar Cane", "Other Non Vegetated Area", "Coffe",
+#                         "Other Non Forest Natural Formation", "Citrus", "Rice")
+
+list_lvl4_classes <- c("Soy Beans", "Pasture",
+                       "Other Temporary Crops", "Mosaic of Agriculture and Pasture",
+                       "Sugar Cane", "Other Non Vegetated Area", "Coffe",
+                       "Other Non Forest Natural Formation", "Citrus", "Rice")
+
+## 7.1: Filter & Clean --------
+# set to other variable name & get others -- not just soybeans 
+trans_toclasses_BR <- source_mapb_trans_municip %>%
+  filter(to_level_4 %in% list_lvl4_classes)
+
+# break up intervals into start and end year (going from )
+trans_toclasses_BR$start_year <- as.numeric(str_sub(trans_toclasses_BR$year, 1, 4)) 
+trans_toclasses_BR$end_year <- as.numeric(str_sub(trans_toclasses_BR$year, -4, -1))
+
+str(trans_toclasses_BR)
+
+# keep only consecutive start/end years
+# this means that 2013 captures the 2012-13 harvest year in BR 
+trans_toclasses_BR <- trans_toclasses_BR %>% 
+  filter(end_year == start_year+1) %>% 
+  select("year", "end_year","start_year","state","municipality","municipality_code",
+         "from_level_0", "from_level_1", "from_level_2", "from_level_3", "from_level_4",     
+         "to_level_0", "to_level_1", "to_level_2", "to_level_3", "to_level_4",      
+         "value")
+
+## 7.2: Aggregate to_level_4 values ----
+
+# aggregate to yearly transition values by combining all FROM classes per municip per year
+trans_toclasses_BRmunicip_agg <- aggregate(value ~ municipality_code + municipality + state + end_year + to_level_4, trans_toclasses_BR, sum)
+
+trans_toclasses_BRmunicip_agg <- trans_toclasses_BRmunicip_agg %>% 
+  filter(end_year >= 2000 & end_year <= 2020) %>% # UGHHHHH ONLY up to 2019!!!!!!!! 
+  rename(
+    "yr" = "end_year",
+    "trans" = "value") %>%
+  select(., c("yr","state", "municipality", "municipality_code", "trans")) %>% 
+  mutate(country = "Brazil")
+
+# rename 
+trans_toclasses <- trans_toclasses_BRmunicip_agg
+
+## 7.3: filter to just the territories (municipalities) within the Cerrado -----
+trans_toclasses_cerrmuni <- trans_toclasses %>% 
+  filter(municipality_code %in% muni_codes_cerr)
+
+
+## 7.4: Get Land Transition to Other Classes of Interest -----
+
+# Aggregate to one value per year
+# agg to one value per entire region per year
+df_trans_to_classes_BRCerr_muni <- trans_toclasses_cerrmuni %>% 
+  aggregate(trans ~ yr, ., sum) %>%
+  mutate(country = "Brazil")
+df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr >= 2007 & yr <= 2017)
+
+# 8: Export all df's to use in next script -----
+
+# Export Production, Price, and Exports
+save(df_prod_USMW_BRCerr, df_prod_USBR,
+     df_price_USMW_BRCerr, 
+     df_exports_USBR_china, df_exports_USBR_world, 
+     df_yield_USBR, df_yield_USMW_BRCerr,
+     file = "../Data_Derived/prod_price_yield_exports.RData")
+
+#load("../Data_Derived/prod_price_exports.RData")
+
+# Export Land Change
+save(df_trans_to_soy_BRCerr_muni,
+     file = "../Data_Derived/land_trans_tosoy_df.RData")
+
+save(df_trans_to_classes_BRCerr_muni,
+     file = "../Data_Derived/land_trans_toclasses_df.RData")
+
+save(shp_br_cerr, shp_muni, shp_code_muni, shp_muni_in_cerr,
+     file = "../Data_Derived/land_trans_shp.RData")
