@@ -54,6 +54,39 @@ F_add_marketyear <- function(df, year_col, area_col){
 load("../Data_Derived/prod_price_yield_exports.RData")
 
 ## 1.0 : Create Plotting Function --------
+F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axis_title){
+  # set plot parameters as inputs from the fxn
+  ggplot(df, aes(x={{x_var}}, y={{y_var}}, color = {{group_var}}, group = {{group_var}})) +
+    geom_line() + 
+    geom_point() +
+    # create a vertical dashed line on the 2012-2013 harvest season
+    geom_vline(aes(xintercept = "2012-2013"), color = "red",
+               linetype="dashed", linewidth=0.5)+
+    theme_bw()+
+    # set up legend manually
+    scale_color_manual(
+      name = "Country",
+      values = c(
+        US = "salmon",
+        Brazil = "cornflowerblue"),
+      breaks = c("US", "Brazil"))+
+    # set labels
+    labs(
+      title = title,
+      subtitle = subtitle,
+      x = "",
+      y = y_axis_title)+   
+    # adjust theme to turn labels vertical and remove legend for plotting fxn
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.8),
+          legend.position = "none")
+}
+
+(p2_prod_national <- F_plot_harvestMY(
+  df = df2_prod_USBR, x_var = harvest_marketyr, y_var = prod, group_var = country,
+  title = "Annual National Soybean Production",
+  subtitle = "Data Sources: USDA-NASS & SIDRA",
+  y_axis_title = "Production (mt)"
+))
 
 
 ## 1.1: Production --------
@@ -94,8 +127,10 @@ df2_prod_USMW_BRCerr <- F_add_marketyear(df_prod_USMW_BRCerr, yr, country)
      x = "",
      y = "Production (mt)"
    )+
-   theme(axis.text.x = element_text(angle = 90, vjust = 0.8),
-         legend.position = "none")
+   theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
+         # keep legend on one plot for the final graph
+         #legend.position = "none"
+         )
 )
 
 
@@ -105,28 +140,36 @@ df2_prod_USBR <- F_add_marketyear(df_prod_USBR, yr, country)
 
 
 # plot - DONE
-(p_prod_national <- ggplot(df2_prod_USBR, aes(x=harvest_marketyr, y=prod, color = country, group = country)) +
-   geom_line() + 
-   geom_point() +
-   geom_vline(aes(xintercept = "2012-2013"), color = "red",
-              linetype="dashed", linewidth=0.5)+
-   theme_bw()+
-   #scale_x_continuous(breaks = breaks, labels = breaks)+
-   scale_color_manual(
-     name = "Country",
-     values = c(
-       US = "salmon",
-       Brazil = "cornflowerblue"),
-     breaks = c("US", "Brazil"))+
-   labs(
-     title = "Annual National Soybean Production",
-     subtitle = "Data Sources: USDA-NASS & SIDRA",
-     x = "",
-     y = "Production (mt)"
-   )+   
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8),
-          legend.position = "none")
-)
+(p_prod_national <- F_plot_harvestMY(
+  df = df2_prod_USBR, 
+  x_var = harvest_marketyr, y_var = prod, group_var = country,
+  title = "Annual National Soybean Production",
+  subtitle = "Data Sources: USDA-NASS & SIDRA",
+  y_axis_title = "Production (mt)"
+))
+
+# (p_prod_national <- ggplot(df2_prod_USBR, aes(x=harvest_marketyr, y=prod, color = country, group = country)) +
+#    geom_line() + 
+#    geom_point() +
+#    geom_vline(aes(xintercept = "2012-2013"), color = "red",
+#               linetype="dashed", linewidth=0.5)+
+#    theme_bw()+
+#    #scale_x_continuous(breaks = breaks, labels = breaks)+
+#    scale_color_manual(
+#      name = "Country",
+#      values = c(
+#        US = "salmon",
+#        Brazil = "cornflowerblue"),
+#      breaks = c("US", "Brazil"))+
+#    labs(
+#      title = "Annual National Soybean Production",
+#      subtitle = "Data Sources: USDA-NASS & SIDRA",
+#      x = "",
+#      y = "Production (mt)"
+#    )+   
+#     theme(axis.text.x = element_text(angle = 90, vjust = 0.8),
+#           legend.position = "none")
+# )
 
 
 ## 1.2: Exports -------
@@ -137,51 +180,68 @@ df2_prod_USBR <- F_add_marketyear(df_prod_USBR, yr, country)
 df2_exports_USBR_china <- F_add_marketyear(df_exports_USBR_china, Period, ReporterDesc)
 
 # plot
-(p_exportvalue_usbr_tochina <- 
-   ggplot(df2_exports_USBR_china, aes(x=harvest_marketyr, y=PrimaryValue, color = ReporterDesc, group = ReporterDesc)) +
-   geom_line() + 
-   geom_point() +
-   geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype="dashed", linewidth=0.5)+
-   theme_bw()+
-   scale_color_manual(
-     name = "Country",
-     values = c(
-       US = "salmon",
-       Brazil = "cornflowerblue"),
-     breaks = c("US", "Brazil"))+
-   labs(
-     title = "Annual Soybean Export Value to China",
-     subtitle = "Data Source: UN Comtrade",
-     x = "",
-     y = "Export Value (USD)"
-   )+theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
-)
+(p_exportvalue_usbr_tochina <- F_plot_harvestMY(
+  df = df2_exports_USBR_china, 
+  x_var = harvest_marketyr, y_var = PrimaryValue, group_var = ReporterDesc,
+  title = "Annual Soybean Export Value to China",
+  subtitle = "Data Sources: UN Comtrade",
+  y_axis_title = "Export Value (USD)"
+))
+
+# (p_exportvalue_usbr_tochina <- 
+#    ggplot(df2_exports_USBR_china, aes(x=harvest_marketyr, y=PrimaryValue, color = ReporterDesc, group = ReporterDesc)) +
+#    geom_line() + 
+#    geom_point() +
+#    geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype="dashed", linewidth=0.5)+
+#    theme_bw()+
+#    scale_color_manual(
+#      name = "Country",
+#      values = c(
+#        US = "salmon",
+#        Brazil = "cornflowerblue"),
+#      breaks = c("US", "Brazil"))+
+#    labs(
+#      title = "Annual Soybean Export Value to China",
+#      subtitle = "Data Source: UN Comtrade",
+#      x = "",
+#      y = "Export Value (USD)"
+#    )+theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
+# )
 
 ### 1.2.1: Export Value (US/BR --> World) --------
 # add Harvest + Market Year Variable
 df2_exports_USBR_world <- F_add_marketyear(df_exports_USBR_world, Period, ReporterDesc)
 
 # plot - DONE
-(p_exportvalue_usbr_toworld <- 
-    ggplot(df2_exports_USBR_world, aes(x=harvest_marketyr, y=PrimaryValue, color = ReporterDesc, group = ReporterDesc)) +
-    geom_line() + 
-    geom_point() +
-    geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype="dashed", linewidth=0.5)+
-    theme_bw()+
-    scale_color_manual(
-      name = "Country",
-      values = c(
-        US = "salmon",
-        Brazil = "cornflowerblue"),
-      breaks = c("US", "Brazil"))+
-    labs(
-      title = "Annual Soybean Export Value to World",
-      subtitle = "Data Source: UN Comtrade",
-      x = "",
-      y = "Export Value (USD)"
-    )+
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
-)
+(p_exportvalue_usbr_toworld <- F_plot_harvestMY(
+  df = df2_exports_USBR_world, 
+  x_var = harvest_marketyr, y_var = PrimaryValue, group_var = ReporterDesc,
+  title = "Annual Soybean Export Value to World",
+  subtitle = "Data Sources: UN Comtrade",
+  y_axis_title = "Export Value (USD)"
+))
+
+# (p_exportvalue_usbr_toworld <- 
+#     ggplot(df2_exports_USBR_world, aes(x=harvest_marketyr, y=PrimaryValue, color = ReporterDesc, group = ReporterDesc)) +
+#     geom_line() + 
+#     geom_point() +
+#     geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype="dashed", linewidth=0.5)+
+#     theme_bw()+
+#     scale_color_manual(
+#       name = "Country",
+#       values = c(
+#         US = "salmon",
+#         Brazil = "cornflowerblue"),
+#       breaks = c("US", "Brazil"))+
+#     labs(
+#       title = "Annual Soybean Export Value to World",
+#       subtitle = "Data Source: UN Comtrade",
+#       x = "",
+#       y = "Export Value (USD)"
+#     )+
+#     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
+# )
+
 
 ### 1.2.2: Export Quantity (World) -------
 # import
@@ -196,79 +256,105 @@ exports_usbr$Area <- str_replace(exports_usbr$Area, "United States of America", 
 exports2_usbr <- F_add_marketyear(exports_usbr, Year, Area)
 
 # plot
-(p_exportqty_usbr_toworld <- 
-    ggplot(exports2_usbr, aes(x=harvest_marketyr, y=Value, color = Area, group = Area)) +
-    geom_line() + 
-    geom_point() +
-    geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype="dashed", linewidth=0.5)+
-    theme_bw()+
-    scale_color_manual(
-      name = "Country",
-      values = c(
-        US = "salmon",
-        Brazil = "cornflowerblue"),
-      breaks = c("US", "Brazil"))+
-    labs(
-      title = "Annual Soybean Export Quantity to World",
-      subtitle = "Data Source: UN Comtrade",
-      x = "",
-      y = "Quantity (kg)"
-    )+
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
-)
+(p_exportqty_usbr_toworld <- F_plot_harvestMY(
+  df = exports2_usbr, 
+  x_var = harvest_marketyr, y_var = Value, group_var = Area,
+  title = "Annual Soybean Export Quantity to World",
+  subtitle = "Data Source: UN Comtrade",
+  y_axis_title = "Quantity (kg)"
+))
+
+# (p_exportqty_usbr_toworld <- 
+#     ggplot(exports2_usbr, aes(x=harvest_marketyr, y=Value, color = Area, group = Area)) +
+#     geom_line() + 
+#     geom_point() +
+#     geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype="dashed", linewidth=0.5)+
+#     theme_bw()+
+#     scale_color_manual(
+#       name = "Country",
+#       values = c(
+#         US = "salmon",
+#         Brazil = "cornflowerblue"),
+#       breaks = c("US", "Brazil"))+
+#     labs(
+#       title = "Annual Soybean Export Quantity to World",
+#       subtitle = "Data Source: UN Comtrade",
+#       x = "",
+#       y = "Quantity (kg)"
+#     )+
+#     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
+# )
 
 ## 1.3: Yield -------
 
 ### 1.3.1: National Yield ------
 df2_yield_USBR <- F_add_marketyear(df_yield_USBR, yr, country)
 
-(p_yield_usbr<-
-    ggplot(df2_yield_USBR, aes(x=harvest_marketyr, y=yield, color = country, group = country)) +
-    geom_line() + 
-    geom_point() +  
-    geom_vline(aes(xintercept = "2012-2013"), color = "red",linetype="dashed", linewidth=0.5, alpha = 0.5)+
-    theme_bw()+
-    scale_color_manual(
-      name = "Country",
-      values = c(
-        US = "salmon",
-        Brazil = "cornflowerblue"),
-      breaks = c("US", "Brazil"))+
-    labs(
-      title = "Annual National Soybean Yield",
-      subtitle = "Data Sources: USDA-NASS & SIDRA",
-      x = "",
-      y = "Soybean Yield (kg/ha)"
-    )+    
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8),
-          legend.position = "none")
-  
-)
+# plot
+(p_yield_usbr <- F_plot_harvestMY(
+  df = df2_yield_USBR, 
+  x_var = harvest_marketyr, y_var = yield, group_var = country,
+  title = "Annual National Soybean Yield",
+  subtitle = "Data Sources: USDA-NASS & SIDRA",
+  y_axis_title = "Soybean Yield (kg/ha)"
+))
+
+# (p_yield_usbr<-
+#     ggplot(df2_yield_USBR, aes(x=harvest_marketyr, y=yield, color = country, group = country)) +
+#     geom_line() + 
+#     geom_point() +  
+#     geom_vline(aes(xintercept = "2012-2013"), color = "red",linetype="dashed", linewidth=0.5, alpha = 0.5)+
+#     theme_bw()+
+#     scale_color_manual(
+#       name = "Country",
+#       values = c(
+#         US = "salmon",
+#         Brazil = "cornflowerblue"),
+#       breaks = c("US", "Brazil"))+
+#     labs(
+#       title = "Annual National Soybean Yield",
+#       subtitle = "Data Sources: USDA-NASS & SIDRA",
+#       x = "",
+#       y = "Soybean Yield (kg/ha)"
+#     )+    
+#     theme(axis.text.x = element_text(angle = 90, vjust = 0.8),
+#           legend.position = "none")
+#   
+# )
 
 ### 1.3.2 Regional Yield ------
 df2_yield_USMW_BRCerr <- F_add_marketyear(df_yield_USMW_BRCerr, yr, country)
 
-(p_yield_usmwbrcerr<-
-    ggplot(df2_yield_USMW_BRCerr, aes(x=harvest_marketyr, y=yield, color = country, group = country)) +
-    geom_line() + 
-    geom_point() +  
-    geom_vline(aes(xintercept = "2012-2013"), color = "red",linetype="dashed", linewidth=0.5, alpha = 0.5)+
-    theme_bw()+
-    scale_color_manual(
-      name = "Country",
-      values = c(
-        US = "salmon",
-        Brazil = "cornflowerblue"),
-      breaks = c("US", "Brazil"))+
-    labs(
-      title = "Annual National Soybean Yield",
-      subtitle = "Data Sources: USDA-NASS & SIDRA",
-      x = "",
-      y = "Soybean Yield (kg/ha)"
-    )+    
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
-  
-)
+# plot
+(p_yield_usmwbrcerr <- F_plot_harvestMY(
+  df = df2_yield_USMW_BRCerr, 
+  x_var = harvest_marketyr, y_var = yield, group_var = country,
+  title = "Annual Regional Soybean Yield",
+  subtitle = "Data Sources: USDA-NASS & SIDRA",
+  y_axis_title = "Soybean Yield (kg/ha)"
+))
+
+# (p_yield_usmwbrcerr<-
+#     ggplot(df2_yield_USMW_BRCerr, aes(x=harvest_marketyr, y=yield, color = country, group = country)) +
+#     geom_line() + 
+#     geom_point() +  
+#     geom_vline(aes(xintercept = "2012-2013"), color = "red",linetype="dashed", linewidth=0.5, alpha = 0.5)+
+#     theme_bw()+
+#     scale_color_manual(
+#       name = "Country",
+#       values = c(
+#         US = "salmon",
+#         Brazil = "cornflowerblue"),
+#       breaks = c("US", "Brazil"))+
+#     labs(
+#       title = "Annual Regional Soybean Yield",
+#       subtitle = "Data Sources: USDA-NASS & SIDRA",
+#       x = "",
+#       y = "Soybean Yield (kg/ha)"
+#     )+    
+#     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
+#   
+# )
 
 
 
@@ -276,6 +362,17 @@ df2_yield_USMW_BRCerr <- F_add_marketyear(df_yield_USMW_BRCerr, yr, country)
 # 2: UNCHANGED DATA --------------------------------
 
 ## 2.1: Market Price -----
+
+# plot 
+# (p_yield_usmwbrcerr <- F_plot_harvestMY(
+#   df = df2_yield_USMW_BRCerr, 
+#   x_var = harvest_marketyr, y_var = yield, group_var = country,
+#   title = "Annual Regional Soybean Yield",
+#   subtitle = "Data Sources: USDA-NASS & SIDRA",
+#   y_axis_title = "Soybean Yield (kg/ha)"
+# ))
+
+
 (p_price_usmwbrcerr<-
    ggplot(df_price_USMW_BRCerr, aes(x=date, y=price, color = country)) +
    geom_line() + 
@@ -410,21 +507,21 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 # 3: Arrange Plots ------------
 ## figure out why there are two legends
 library(patchwork)
-p1 <- p_yield_usmwbrcerr +  
-  p_yield_usbr  +
-  p_prod_regional +  
-  p_prod_national #+
-  #p_price_usmwbrcerr #+  
-  # p_exportqty_usbr_toworld + 
-  # p_exportvalue_usbr_toworld + 
-  # p_exportvalue_usbr_tochina + 
-  # p_trans_deforest2 + 
-  # p_trans_tosoy
+p1 <- p_yield_usmwbrcerr + 
+  p_yield_usbr +
+  p_prod_regional +
+  p_prod_national + 
+  p_price_usmwbrcerr +  
+  p_exportqty_usbr_toworld + 
+  p_exportvalue_usbr_toworld + 
+  p_exportvalue_usbr_tochina + 
+  p_trans_deforest2 + 
+  p_trans_tosoy
 
 p1
 
 p2 <- p1 +
-  guides(colour = "none")+
+  #guides(colour = "none") &
   plot_layout(nrow = 5, guides = "collect") & 
   theme(legend.position = 'bottom') & 
   theme(legend.text = element_text(size = 15)) & 
@@ -433,5 +530,5 @@ p2 <- p1 +
 p2
 
 ggsave(filename = "../Figures/soybeanstats_harvestmarketyear.png",
-       p2, height = 12, width = 15, 
+       p2, height = 18, width = 15, 
        dpi = 300)  
