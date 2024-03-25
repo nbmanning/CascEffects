@@ -229,19 +229,20 @@ str(sf2)
 
 
 # plot soy and maize area from real data
-# takes a long time but it works!!! 
-sf %>%
-  #filter(year == yr2) %>%
-  filter(year >= yr1 & year <= yr2) %>% 
-  ggplot(aes(fill = sm_area)) +
-  geom_sf() +
-  facet_wrap(~year)+
-  scale_fill_distiller()+
-  #scale_fill_viridis_d(option = 'rocket', begin = 0, end = 1) +
-  labs(
-    title = 'Soy+Maize Area per Muni',
-    fill = 'Area Planted (ha)'
-  )
+# uncomment to run - takes a long time but it works!!! 
+
+# sf %>%
+#   #filter(year == yr2) %>%
+#   filter(year >= yr1 & year <= yr2) %>% 
+#   ggplot(aes(fill = sm_area)) +
+#   geom_sf() +
+#   facet_wrap(~year)+
+#   scale_fill_distiller()+
+#   #scale_fill_viridis_d(option = 'rocket', begin = 0, end = 1) +
+#   labs(
+#     title = 'Soy+Maize Area per Muni',
+#     fill = 'Area Planted (ha)'
+#   )
 
 
 
@@ -305,9 +306,8 @@ sf_soy_diff_nogeom <- sf_soy_diff %>%
   drop_na()
 
 
-# works up to here #
-
-df_muni_geobr <- left_join(sf_soy_diff_nogeom, shp_muni, by = "code_muni")
+# get a different soy 'df' using geobr package - not necessary
+# df_muni_geobr <- left_join(sf_soy_diff_nogeom, shp_muni, by = "code_muni")
 
 #df_muni <- st_join(test_df_soy_diff, shp_muni, by = "code_muni") # Error in wk_handle.wk_wkb(wkb, s2_geography_writer(oriented = oriented,  : Loop 0 is not valid: Edge 253 crosses edge 255
 
@@ -616,15 +616,15 @@ F_plot_gg_diffcont <- function(data, var, year1, year2){
 t_1213 <- F_calc_diff(sf, 2012, 2013)
 t_1215 <- F_calc_diff(sf, 2012, 2015)
 t_1217 <- F_calc_diff(sf, 2012, 2017)
-#t_1222 <- F_calc_diff(test_df_soy, 2012, 2022)
+t_1222 <- F_calc_diff(sf, 2012, 2022)
 
 
 # rbind to get one long df 
 t <- rbind(
   t_1213, 
   t_1215, 
-  t_1217#, 
-  #t_1222
+  t_1217, 
+  t_1222
 )
 
 names(t)
@@ -640,7 +640,7 @@ t <- t %>%
   )
 
 #### SAVE t ---------------
-st_write(t, paste0("../Data_Derived/", "soy", "_diff_yap_", "y12012_201320152017.shp"),
+st_write(t, paste0("../Data_Derived/", "soy", "_diff_yap_", "y12012_2013201520172022.shp"),
          write_dsn_opts = list(quiet = FALSE), delete_layer = T)
 
 #st_write(t, "../Data_Derived/soy_diff_yap_")
