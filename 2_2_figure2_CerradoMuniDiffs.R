@@ -211,26 +211,26 @@ df <- df %>%
 # 2: Plot Real Data --------
 
 # get one year of real soy/maize data per municip
-test_df <- df #%>% 
+sf <- df #%>% # used to be 'test_df_soy'
   #filter(year == 2013)
   #filter(year == 2012 | year == 2013) # used for test_df_soy
 
-test_df <- st_as_sf(test_df)
+sf <- st_as_sf(sf)
 
 # filter to just municipalities in the Cerrado by bringing in Cerrado muni codes from SIMPLE-G script ("aggStats_MapBiomas.R")
 #load(paste0(folder_simpleg, "muni_codes_cerr.Rdata"))
 load(paste0(folder, "muni_codes_cerr.Rdata"))
 
-test_df <- test_df %>% filter(CODE %in% muni_codes_cerr)
+sf <- sf %>% filter(CODE %in% muni_codes_cerr)
 
 # get just the lowest and highest to fix map
-test_df2 <- test_df %>% filter(CODE == 3109600 | CODE == 5107925)
-str(test_df2)
+sf2 <- sf %>% filter(CODE == 3109600 | CODE == 5107925)
+str(sf2)
 
 
 # plot soy and maize area from real data
 # takes a long time but it works!!! 
-test_df %>%
+sf %>%
   #filter(year == yr2) %>%
   filter(year >= yr1 & year <= yr2) %>% 
   ggplot(aes(fill = sm_area)) +
@@ -249,8 +249,8 @@ test_df %>%
 # LOOK TO 2_2_figure_CerradoStateDiffs.R FOR DIFF CALC
 ## 3.1: Test with Soybeans -----------------
 
-#PICK UP HERE: START WITH SOYBEANS; goal is to get “test_df” variable to look like prod_BR from 2_2 line 66 
-test_df_soy <-test_df %>% 
+#PICK UP HERE: START WITH SOYBEANS; goal is to get “sf” variable to look like prod_BR from 2_2 line 66 
+sf_soy <-sf %>% 
   select(NM_MUN, SIGLA, CODE, year, soy_yield, soy_prod, soy_area)
 
 # add function, comment out 
@@ -284,7 +284,7 @@ F_calc_diff <- function(data, year1, year2){
   }
 
 # Works!!
-test_df_soy_diff <- F_calc_diff(test_df_soy, 2012, 2017)
+sf_soy_diff <- F_calc_diff(sf_soy, 2012, 2017)
 
 # 4: Get Shapefile & Data ----
 
@@ -299,7 +299,7 @@ shp_muni <- shp_muni %>%
 
 ## 4.1 Join -----
 # drop old geometry to merge with the shp_muni geometry
-test_df_soy_diff2 <- test_df_soy_diff %>%
+sf_soy_diff_nogeom <- sf_soy_diff %>%
   st_drop_geometry() %>%
   rename(code_muni = CODE) %>%
   drop_na()
@@ -307,11 +307,11 @@ test_df_soy_diff2 <- test_df_soy_diff %>%
 
 # works up to here #
 
-df_muni <- left_join(test_df_soy_diff2, shp_muni, by = "code_muni")
+df_muni_geobr <- left_join(sf_soy_diff_nogeom, shp_muni, by = "code_muni")
 
 #df_muni <- st_join(test_df_soy_diff, shp_muni, by = "code_muni") # Error in wk_handle.wk_wkb(wkb, s2_geography_writer(oriented = oriented,  : Loop 0 is not valid: Edge 253 crosses edge 255
 
-df_muni2 <- test_df_soy_diff %>% 
+df_muni <- sf_soy_diff %>% 
   rename("geom" = "geometry")
 
 # 4: Plot Differences (Real Data) -------------
@@ -331,7 +331,7 @@ test_y_var_title <- str_to_title(sub("*_diff","",test_y_var))
 map_sty <- "jenks"
 class <- classIntervals(
   round(
-    df_muni2[[test_y_var]], 
+    df_muni[[test_y_var]], 
     digits = 2),
   digits = 2,
   #n = 11,
@@ -361,17 +361,17 @@ class <- classIntervals(
 # STOP USING MANUAL BREAKS - this increases bias in data and decreases reproducibility
 
 # set new column with the breaks for mapping
-df_muni2$DiffCut <- cut(df_muni2[[test_y_var]], class$brks, include.lowest = T)
+df_muni$DiffCut <- cut(df_muni[[test_y_var]], class$brks, include.lowest = T)
 
-num_cuts <- as.numeric((length(levels(df_muni2$DiffCut))))
+num_cuts <- as.numeric((length(levels(df_muni$DiffCut))))
 test_pal <- colorRampPalette(brewer.pal(11,"PiYG"))
 
-t <- as.numeric(length(levels(df_muni2$DiffCut)))
+t <- as.numeric(length(levels(df_muni$DiffCut)))
 str(t)
 
 library(scico)
 # plot changes - with breaks 
-p <- ggplot(df_muni2)+
+p <- ggplot(df_muni)+
   geom_sf(aes(fill = DiffCut, geometry = geom), col = "darkgray", linewidth = 0.02)+
   #geom_sf_text(aes(label = code_muni, geometry = geom), colour = "darkgray")+
   theme_bw()+
@@ -397,13 +397,13 @@ p <- ggplot(df_muni2)+
 p
 
 # plot changes - with limits to center at 0
-p2 <- ggplot(df_muni2)+
+p2 <- ggplot(df_muni)+
   geom_sf(aes(fill = !!sym(test_y_var), geometry = geom), col = "darkgray", linewidth = 0.02)+
   #geom_sf_text(aes(label = code_muni, geometry = geom), colour = "darkgray")+
   theme_bw()+
   #scale_fill_brewer(palette = "PiYG", direction = 1, drop = F, na.value = "black")+
   scale_fill_distiller(palette = "PiYG", direction = 1, na.value = "blue",
-                       limits = c(-1, 1) * max(abs(df_muni2[[test_y_var]])))+
+                       limits = c(-1, 1) * max(abs(df_muni[[test_y_var]])))+
   labs(
     title = paste("Change in",
                   str_to_title(paste(
@@ -421,7 +421,7 @@ p2 <- ggplot(df_muni2)+
 p2
 
 # plot changes - with scico()
-p3 <- ggplot(df_muni2)+
+p3 <- ggplot(df_muni)+
   geom_sf(aes(fill = !!sym(test_y_var), geometry = geom), col = "darkgray", linewidth = 0.02)+
   #geom_sf_text(aes(label = code_muni, geometry = geom), colour = "darkgray")+
   theme_bw()+
@@ -613,9 +613,9 @@ F_plot_gg_diffcont <- function(data, var, year1, year2){
 # create three test datasets by running through soy with different years 
 #crop <- "soy"
 
-t_1213 <- F_calc_diff(test_df_soy, 2012, 2013)
-t_1215 <- F_calc_diff(test_df_soy, 2012, 2015)
-t_1217 <- F_calc_diff(test_df_soy, 2012, 2017)
+t_1213 <- F_calc_diff(sf, 2012, 2013)
+t_1215 <- F_calc_diff(sf, 2012, 2015)
+t_1217 <- F_calc_diff(sf, 2012, 2017)
 #t_1222 <- F_calc_diff(test_df_soy, 2012, 2022)
 
 
