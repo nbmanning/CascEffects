@@ -26,6 +26,7 @@ library(patchwork) # getting plots together in one figure
 library(RColorBrewer)
 library(tidyverse)
 library(sf)
+library(scico)
 #library(terra) # for loading SIMPLE-G results
 
 # 0.2: Constants -------- 
@@ -616,15 +617,15 @@ F_plot_gg_diffcont <- function(data, var, year1, year2){
 t_1213 <- F_calc_diff(sf, 2012, 2013)
 t_1215 <- F_calc_diff(sf, 2012, 2015)
 t_1217 <- F_calc_diff(sf, 2012, 2017)
-t_1222 <- F_calc_diff(sf, 2012, 2022)
+#t_1222 <- F_calc_diff(sf, 2012, 2022)
 
 
 # rbind to get one long df 
 t <- rbind(
   t_1213, 
   t_1215, 
-  t_1217, 
-  t_1222
+  t_1217#, 
+  #t_1222
 )
 
 names(t)
@@ -647,6 +648,11 @@ st_write(t, paste0("../Data_Derived/", "soy", "_diff_yap_", "y12012_201320152017
 
 F_facet <- function(data, var){
   
+  # TEST: rename for joining -- don't need to do if we keep the previous geometry 
+  ### NOTE: MIGHT NEED TO USE THE GEOBR 'SF' VARIABLE INSTEAD ###
+  data <- data %>% rename("geom" = "geometry")
+
+    
   # get titles
   y_var <- as.character(var)
   y_var_title <- str_to_title(sub("*_diff","", y_var))
