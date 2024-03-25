@@ -37,7 +37,9 @@ pct_title <- " - Med"
 # 1: Import clean real muni data ---------
 # from 2_2_figure2_CerradoMuniDiffs.R
 
-muni_diff <- st_read("../Data_Derived/soy_diff_yap_y12012_201320152017.shp")
+#muni_diff <- st_read("../Data_Derived/soy_diff_yap_y12012_201320152017.shp")
+muni_diff <- st_read("../Data_Derived/soy_diff_yap_y12012_2013201520172022.shp")
+
 muni_diff <- muni_diff %>% 
   rename(
     soy_yield = s_y,
@@ -92,9 +94,28 @@ sv_muni <- terra::vect(shp_muni)
 # set CRS of Cerrado to the same as the Source SpatVector of municipalities 
 crs(r_cerr) <- crs(sv_muni)
 
+# set up fxn to calc zonal stats for a given layer based on sv_muni
+F_zonal <- function(layer){
+  layer <- zonal(layer, sv_muni, fun = sum, as.raster = T)
+}
+
+# get list of only layer names that start with rawch
+r_cerr_rawch <- r_cerr %>% 
+  subset(grepl( "rawch" , names(.)))
+
+rawch_county <- sapp(r_cerr_rawch, fun = F_zonal)  #F_zonalsum_muni_cerr(names())
+
 # select one band
 # NOTE: since we are doing raw change per grid cell, we want the sum per county
-rast <- r_cerr$rawch_SOY
+var_rast <- "rawch_SOY"
+
+
+
+#F_zonalsum_muni_cerr <- function(df){
+# get one layer from variable
+rast <- r_cerr[["rawch_SOY"]]
+#rast <- r_cerr[[layer_name]]
+#rast_name <- names(rast)[[1]]
 
 # plot grid-cell and municpalities
 terra::plot(rast, main = "Grid-Cell Soy Change in Area (1000 ha) Per Grid Cell")
@@ -103,8 +124,10 @@ terra::plot(sv_muni, add = T)
 # get results as raster
 rast_sum_muni <- zonal(rast, sv_muni, fun = sum, as.raster = T)
 
+
 # plot zonal stats with county outline  
-plot(rast_sum_muni, main = "Sum of Raw Change in Area per County")
+#plot(rast_sum_muni, main = "Sum of Raw Change in Area per County")
+plot(rawch_county$rawch_QLAND , main = "Sum of Raw Change in Area per County")
 plot(sv_muni, add = T)
 
 # use 'extract()' to match the overlapping raster and vector
@@ -121,28 +144,39 @@ rast_ext$code_muni <- muni_codes
 rast_ext_unique <- rast_ext %>% 
   filter(code_muni %in% muni_codes_cerr) %>% 
   unique() %>% 
-  dplyr::select(-ID) %>% 
-  mutate(
-    rawch_SOY = rawch_SOY*1000
-  )
-  
-rast_ext_unique <- rast_ext_unique %>% 
-  left_join(shp_muni) %>% st_as_sf() 
+  dplyr::select(-ID) #%>% 
+# mutate(
+#   !!sym(test_y_var) = rast_name*1000
+# )
+
+rast_ext_unique <- rast_ext_unique %>%
+  left_join(shp_muni) %>% st_as_sf()
+
+  #return(rast_ext)
+#}
+
+# get list of only layer names that start with rawch
+r_cerr_rawch <- r_cerr %>% 
+  subset(grepl( "rawch" , names(.)))
+
+ls_layer_names <- names(r_cerr_rawch)
+
+rawch_county <- lapp(r_cerr_rawch, fun = F_zonalsum_muni_cerr)  #F_zonalsum_muni_cerr(names())
 
 #terra::plot(rast_ext_unique)
 
 # Plot SIMPLE-G at County Level
-ggplot(rast_ext_unique)+
-  geom_sf(aes(fill = rawch_SOY))+
-  theme_minimal()+
-  scale_fill_gradientn(colors = brewer.pal(8, "OrRd"))+
-  labs(
-    title = "SIMPLE-G Raw Change Summed to County",
-    fill = "Area Change (ha)"
-  )+
-  theme(
-    plot.title = element_text(hjust = 0.5)
-    )
+# ggplot(rast_ext_unique)+
+#   geom_sf(aes(fill = rawch_SOY))+
+#   theme_minimal()+
+#   scale_fill_gradientn(colors = brewer.pal(8, "OrRd"))+
+#   labs(
+#     title = "SIMPLE-G Raw Change Summed to County",
+#     fill = "Area Change (ha)"
+#   )+
+#   theme(
+#     plot.title = element_text(hjust = 0.5)
+#     )
 
 # 4: Join and Plot Merged Data -----------
 
@@ -153,7 +187,7 @@ ggplot(rast_ext_unique)+
 # set yr
 yr <- 2013 
 
-
+#### NEW FUNCTION: GET 1:1 PLOTS ###########
 # change to df (so spatial shapes come from the other df) and choose one year
 muni_diff_df <- muni_diff %>% 
   filter(year == yr) %>%
@@ -161,7 +195,7 @@ muni_diff_df <- muni_diff %>%
   st_drop_geometry()
 
 # merge the two 
-rast_merged <-rast_ext_unique %>% left_join(muni_diff_df, by = "code_muni")
+rast_merged <-rast_ext_unique2 %>% left_join(muni_diff_df, by = "code_muni")
 
 # create a 1:1 plot with the SIMPLE-G Raw Change and Difference calcualted from script 2_2
 ggplot(rast_merged, aes(x = rawch_SOY, y = area_diff)) +
