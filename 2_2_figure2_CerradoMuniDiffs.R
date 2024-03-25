@@ -22,11 +22,11 @@ library(tidyverse)
 library(sidrar) # download BR data
 library(geobr) # get BR shapefiles
 library(classInt) # plotting in intervals
-library(patchwork) # getting plots together in one figure
+#library(patchwork) # getting plots together in one figure
 library(RColorBrewer)
-library(tidyverse)
 library(sf)
-library(scico)
+library(scico) # used for getting the midpoint at 0
+library(cowplot) # used for arranging the facet_wrap into a grid
 #library(terra) # for loading SIMPLE-G results
 
 # 0.2: Constants -------- 
@@ -608,6 +608,7 @@ F_plot_gg_diffcont <- function(data, var, year1, year2){
 }
 
 
+
 ## 4.X: TEST running F_calc_diff then rbind then plot in a grid -----
 
 
@@ -617,32 +618,19 @@ F_plot_gg_diffcont <- function(data, var, year1, year2){
 t_1213 <- F_calc_diff(sf, 2012, 2013)
 t_1215 <- F_calc_diff(sf, 2012, 2015)
 t_1217 <- F_calc_diff(sf, 2012, 2017)
-#t_1222 <- F_calc_diff(sf, 2012, 2022)
+t_1222 <- F_calc_diff(sf, 2012, 2022)
 
 
 # rbind to get one long df 
 t <- rbind(
   t_1213, 
   t_1215, 
-  t_1217#, 
-  #t_1222
+  t_1217, 
+  t_1222
 )
-
+names(t_1217)
+names(t_1222)
 names(t)
-
-t <- t %>% 
-  rename(
-    s_y = soy_yield,
-    s_p = soy_prod,
-    s_a = soy_area,
-    sp_dif = production_diff,
-    sa_dif = area_diff,
-    sy_dif = yield_diff
-  )
-
-#### SAVE t ---------------
-st_write(t, paste0("../Data_Derived/", "soy", "_diff_yap_", "y12012_2013201520172022.shp"),
-         write_dsn_opts = list(quiet = FALSE), delete_layer = T)
 
 #st_write(t, "../Data_Derived/soy_diff_yap_")
 
@@ -661,6 +649,8 @@ F_facet <- function(data, var){
     geom_sf(aes(fill = !!sym(var), geometry = geom), col = "darkgray", linewidth = 0.02)+
     theme_bw()+
     facet_wrap(~years, nrow = 1)+
+    #theme(strip.clip = "off")+
+    #theme(strip.text = element_text(size = 18))+
     #scale_fill_brewer(palette = pal, direction = 1, drop = F)+
     # use the custom theme 
     scale_fill_scico(palette = "bam", direction = 1, na.value = "blue",
@@ -675,12 +665,14 @@ F_facet <- function(data, var){
       x = "",
       y = ""
     )
-  
+
   # save figure
   ggsave(paste0("../Figures/CerradoMuni/",
-                "gg_facet_", y_var,
+                "gg2_facet_", y_var,
                 ".png"),
-         plot = p)
+         plot = p,
+         width = 12,
+         height = 6)
   
   return(p)
   
@@ -699,8 +691,27 @@ pf_area <- F_facet(t, "area_diff")
 )
 
 # save
-ggsave("../Figures/CerradoMuni/gg_facet_yap_2013_2015_2017.png",
+ggsave("../Figures/CerradoMuni/gg_facet_yap_2013_2015_2017_2022.png",
        plot = pf_yap)
+
+## export new sf ##
+# first, change names so they aren't auto-shortened
+t <- t %>% 
+  rename(
+    s_y = soy_yield,
+    s_p = soy_prod,
+    s_a = soy_area,
+    sp_dif = production_diff,
+    sa_dif = area_diff,
+    sy_dif = yield_diff
+  )
+
+names(t)
+
+#### SAVE t ---------------
+st_write(t, paste0("../Data_Derived/", "soy", "_diff_yap_", "y12012_2013201520172022.shp"),
+         write_dsn_opts = list(quiet = FALSE), delete_layer = T)
+
 
 
 # PICK UP HERE ---------
