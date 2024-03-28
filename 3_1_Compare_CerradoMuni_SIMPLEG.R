@@ -4,6 +4,10 @@
 
 # Notes:
 
+# NEXT STEP:
+## Bring all data together (l, m, h) for a single crop to plot together
+## Bring all crop types together to plot to compare 
+
 # Created: 3/23/24
 # Last Edited: March 2024
 
@@ -32,40 +36,38 @@ folder <- "../Data_Source/soymaize_2010_2022_andres/"
 folder_fig_stat <- "../Figures/CerradoMuni/stats/"
 
 # set pct
-pct <- "_m"
+pct <- "_m" # either "_l" , "_m" , or "_h"
 pct_title <- " - Med"
-crop <- "soy"
+crop <- "soy" # either maize, soy, or sm (Soy+Maize)
 layer_choice <- "rawch_SOY"
 
 # 1: Import clean real muni data ---------
 # from 2_2_figure2_CerradoMuniDiffs.R
 
-# MANUALLY CHANGE EACH TIME #
-#muni_diff <- st_read("../Data_Derived/soy_diff_yap_y12012_201320152017.shp")
-#muni_diff <- st_read("../Data_Derived/maize_diff_yap_y12012_2013201520172022.shp")
 muni_diff <- st_read(paste0("../Data_Derived/", crop, "_diff_yap_y12012_2013201520172022.shp"))
 
+# MANUALLY CHANGE - change to elif() eventually
 muni_diff <- muni_diff %>% 
   rename(
     soy_yield = s_y,
     soy_prod = s_p,
     soy_area = s_a,
-    # maize_yield = m_y,
-    # maize_prod = m_p,
-    # maize_area = m_a,
-    # sm_yield = sm_y,
-    # sm_prod = sm_p,
-    # sm_area = sm_a,
-    
-    # MANUALLY CHANGE - change to elif()
     production_diff = sp_dif,
     area_diff = sa_dif,
     yield_diff = sy_dif
     
+    # maize_yield = m_y,
+    # maize_prod = m_p,
+    # maize_area = m_a,
+    # # 
     # production_diff = mp_dif,
     # area_diff = ma_dif,
-    # yield_diff = my_dif
+    # yield_diff = my_dif,
     
+    
+    # sm_yield = sm_y,
+    # sm_prod = sm_p,
+    # sm_area = sm_a,
     # production_diff = smp_dif,
     # area_diff = sma_dif,
     # yield_diff = smy_dif
@@ -99,7 +101,8 @@ r_cerr <- readRDS(file = paste0(folder_simpleg, "/rds/r", pct, "_Cerrado.rds"))
 ## 2.1: Plot SIMPLE-G Results ---------
 # plot SIMPLE-G result
 terra::plot(r_cerr$new_QLAND, main = "Cerrado Post-Sim Cropland Area Per Grid Cell")
-terra::plot(r_cerr$rawch_SOY, main = "Cerrado Soy Change in Area (1000 ha) Per Grid Cell")
+terra::plot(r_cerr[[layer_choice]]*1000, 
+            main = paste("Cerrado", str_to_title(crop), "Change in Area (ha) Per Grid Cell"))
 
 # 3: SIMPLE-G Grid Cell Raster to County Scale ----------
 library(terra)
@@ -129,7 +132,9 @@ r_cerr_rawch <- r_cerr %>%
 rawch_county <- sapp(r_cerr_rawch, fun = F_zonal)  
 
 # plot some zonal stats with county outline to test  
-plot(rawch_county$rawch_QLAND , main = "Sum of Raw Change in Area per County")
+plot(rawch_county$rawch_QLAND , main = "Sum of SIMPLE-G Change in Area per County")
+terra::plot(rawch_county[[layer_choice]], 
+            main = paste("Cerrado", str_to_title(crop), "Change in Area (ha) Per County"))
 plot(sv_muni, add = T)
 
 
@@ -195,17 +200,22 @@ F_zonal_to_OneToOne <- function(layer, yr, var_compare){
     geom_point() +
     geom_abline(intercept = 0, slope = 1, color = "red") +
     labs(
-      x = paste("SIMPLE-G Change in", str_title), 
-      y = paste(yr, "Change in", str_to_title(crop), "Area"), 
+      x = "SIMPLE-G Change", 
+      y = "Raw Change", 
       title = paste("1:1 plot of", str_title, "Area Change from SIMPLE-G", pct_title, "and", yr, "Change")) +
-    theme_minimal()+
+    theme_bw()+
     theme(
-      plot.title = element_text(hjust = 0.5)
+      axis.text.y = element_text(size = 14),
+      axis.title.y = element_text(size = 18),
+      axis.text.x = element_text(size = 14),
+      axis.title.x = element_text(size = 18),
+      plot.title = element_text(size = 18, hjust = 0.5),
+      plot.subtitle = element_text(size = 14, hjust = 0.5)
     )
   
   ggsave(filename = paste0(folder_fig_stat, "OneToOne_",crop,"_", yr, pct, ".png"),
          #file = p,
-         #width = 12, height = 6
+         width = 10, height = 5
          )
 }
   
@@ -246,6 +256,7 @@ lapply(yr_list, function(x) F_zonal_to_OneToOne(yr = x, layer = layer_choice, va
 # TEST WITH ONE LAYER #
 # use 'extract()' to match the overlapping raster and vector
 # NOTE: 'ID' = T so that we have a column to match with later
+
 
 rast_ext <- extract(rawch_county[[layer_choice]], sv_muni, ID = T)
 str(rast_ext)
@@ -303,7 +314,7 @@ box_rast_merged <- box_rast_merged %>%
   filter(!any(is.na(area_diff)))
 
 # PLOT boxplot 
-ggplot(box_rast_merged_box, aes(x=year, y=area_diff)) + 
+ggplot(box_rast_merged, aes(x=year, y=area_diff)) + 
   geom_boxplot()+
   labs(
     title = paste0("SIMPLE-G ", str_to_title(crop), pct_title, " Compared to Area Change"),
@@ -313,13 +324,14 @@ ggplot(box_rast_merged_box, aes(x=year, y=area_diff)) +
   )+
   theme_bw()+
   theme(
-    axis.text = element_text(size = 14),
-    plot.title = element_text(size = 18),
-    plot.subtitle = element_text(size = 14)
+    axis.text.y = element_text(size = 14),
+    axis.text.x = element_text(size = 18),
+    plot.title = element_text(size = 18, hjust = 0.5),
+    plot.subtitle = element_text(size = 14, hjust = 0.5)
   )
 
 ggsave(filename = paste0(folder_fig_stat, "box_", crop, pct, ".png"),
-       width = 20, height = 10)
+       width = 10, height = 5)
 
 # aggregate results to show change 
 agg_results <- box_rast_merged %>% aggregate(area_diff ~ year + years, FUN = sum)
@@ -334,12 +346,14 @@ ggplot(agg_results, aes(x = year, y = area_diff)) +
   )+
   theme_bw()+
   theme(
-    axis.text = element_text(size = 14),
-    plot.title = element_text(size = 18),
+    axis.text.y = element_text(size = 14),
+    axis.text.x = element_text(size = 18),
+    plot.title = element_text(size = 18, hjust = 0.5),
+    plot.subtitle = element_text(size = 14, hjust = 0.5)
   )
 
 ggsave(filename = paste0(folder_fig_stat, "bar_", crop, pct, ".png"),
-       width = 20, height = 10)
+       width = 10, height = 5)
 
 # CALCULATE RMSE #
 
@@ -392,16 +406,26 @@ ggplot(rmse_calc, aes(x = year, y = RMSE, group = 1))+
     title = paste0("RMSE of SIMPLE-G ", str_to_title(crop), pct_title, " Compared to Area Change"),
     x = ""
   )+
+  # scale_y_continuous(
+  # #MAIZE#
+  # limits = c(2000, 12000), 
+  # breaks = seq(2000, 12000, by = 2000))+
+  # #SOY#  
+  # limits = c(2000, 16000), 
+  # breaks = seq(2000, 16000, by = 4000))+
   theme_bw()+
   theme(
-    axis.text = element_text(size = 14),
-    axis.title = element_text(size = 14),
-    plot.title = element_text(size = 16)
+    axis.text.y = element_text(size = 14),
+    axis.text.x = element_text(size = 18),
+    plot.title = element_text(size = 18, hjust = 0.5),
+    plot.subtitle = element_text(size = 14, hjust = 0.5)
   )
 
 ggsave(filename = paste0(folder_fig_stat, "RMSE_", crop, pct, ".png"),
-       width = 20, height = 10)
+       width = 10, height = 5)
 
+
+# END ##################################
 
 
 # NOTE:
