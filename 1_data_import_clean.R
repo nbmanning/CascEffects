@@ -8,6 +8,9 @@
 ## Use of USDA QuickStats requires a Key
 ## Use of datazoom.amazonia requires an OAuth Token to link with Google Drive
 
+# PICK UP BY RE-RUNNING THIS #
+## FINISH SECTION 5 ON AREA AND ADD TO LINE PLOTS 
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 rm(list = ls())
@@ -516,7 +519,176 @@ df_yield_USMW_BRCerr <- df_yield_USMW_BRCerr %>%
   filter(yr >= 2007 & yr <= 2017)
 
 
-# 5: Area Planted: ----------
+# 5: Area: ----------
+
+## 5.1: US-MW Area Planted ----------
+# get raw data from QuickStats
+area_p_USMWst <- getQuickstat(
+  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  program = "SURVEY",
+  data_item = "SOYBEANS - ACRES PLANTED",
+  commodity = "SOYBEANS",
+  geographic_level = "STATE",
+  # state = c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
+  #           "IOWA", "MINNESOTA", "WISCONSIN", "ILLINOIS", "INDIANA", "OHIO", "MICHIGAN"),
+  year = paste(year_range),
+  geometry = F) %>%
+  # keep only some of the variables
+  dplyr::select(
+    year, county_name, county_code, state_name, state_alpha,
+    state_fips_code, short_desc, freq_desc, reference_period_desc, Value) %>%
+  # rename the Value column
+  dplyr::rename(area_planted = Value)
+
+# clean 
+area_p_USMWst <- area_p_USMWst %>% 
+  filter(reference_period_desc == "YEAR") %>% 
+  filter(state_name %in% c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
+                           "IOWA", "MINNESOTA", "WISCONSIN", "ILLINOIS", "INDIANA", "OHIO", "MICHIGAN")) %>% 
+  # select relevant variables
+  select(c("year", "reference_period_desc", "state_alpha", "area_planted")) %>% 
+  rename("yr" = "year",
+         "state" = "state_alpha") %>% 
+  # Change from MONTH YEAR to actual date format (e.g. NOV 2016 --> 01/01/2016)
+  mutate(country = "US",
+         #year_month_abv = paste(mo, yr),
+         #date = lubridate::ymd(yr, truncated = 2L)
+         )
+
+
+# filter to just date, price, country for plotting 
+area_p_USMW <- area_p_USMWst %>% 
+  group_by(yr, country) %>% 
+  #summarise(area_planted = sum(area_planted))
+  dplyr::summarize(area_planted = round(sum(area_planted), digits = 2)) %>% 
+  mutate(description = "US-MW States",
+         country = "US",
+         # convert to from acres to ha
+         # 1 Acre = 0.40468564 Hectare
+         area_planted = area_planted*0.40468564
+  )
+
+
+
+## 5.2: Cerrado Area Planted --------
+
+# 1                                                                                                   Área plantada (Hectares) [ a ]
+# 2                                                                              Área plantada - percentual do total geral (%) [ a ]
+# 3                                                                                                          Área colhida (Hectares)
+# 4                                                                                     Área colhida - percentual do total geral (%)
+
+# get state-level data so we can merge to only those states within the extent of the Cerrado
+raw_sidra_area <- get_sidra(x = 1612, 
+                       variable =  c(216, 109), # production and yield # or for first six (excluding value of production) c(109, 1000109, 216, 1000216,214, 112) 
+                       period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
+                       geo = "State", # Brazil, State, or Município
+                       geo.filter = NULL,
+                       classific = "c81",
+                       category = list(2713), # Soja (em grão)
+                       header = T,
+                       format = 3)
+
+# colnames(raw_sidra)
+
+# clean and translate columns
+area_BR <- raw_sidra_area %>% 
+  select("Unidade da Federação (Código)", "Unidade da Federação", "Ano", "Variável", "Valor") %>% 
+  rename(
+    "state_code" = "Unidade da Federação (Código)",
+    "state_name" = "Unidade da Federação",
+    "yr" = "Ano",
+    "variable" = "Variável",
+    "value" = "Valor") %>%  
+  mutate(variable = str_replace(variable, "Área colhida", "area_harvested"),
+         #variable = str_replace(variable, "Rendimento médio da produção", "yield"
+         variable = str_replace(variable, "Área plantada", "area_planted"),
+         yr = as.double(yr)) %>% 
+  select(.,c("yr", "variable", "value", "state_name"))
+
+area_BR <- left_join(area_BR, BR_abbvs)
+area_BRCerr_states <- filter(area_BR, state %in% BRCerr_state_abbvs)
+
+# make data wide to match US data and make it easier to merge
+area_BRCerr_states <- pivot_wider(area_BRCerr_states, names_from = "variable")
+
+# add country and filter to the same variables as US
+area_BRCerr_states <- area_BRCerr_states %>% 
+  mutate(country = "Brazil") %>% 
+  select(yr, state, area_harvested, area_planted, country)
+
+# summarize to regional level
+area_p_BRCerr <- area_BRCerr_states %>% 
+  na.omit() %>% 
+  group_by(yr) %>%
+  dplyr::summarize(area_planted = round(sum(area_planted), digits = 2)) %>% 
+  mutate(description = "States with Cerrrado",
+         country = "Brazil")
+
+
+
+
+## 5.3: US-MW Area Harvested ----------
+# get raw data from QuickStats
+area_h_USMWst <- getQuickstat(
+  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  program = "SURVEY",
+  data_item = "SOYBEANS - ACRES HARVESTED",
+  commodity = "SOYBEANS",
+  geographic_level = "STATE",
+  # state = c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
+  #           "IOWA", "MINNESOTA", "WISCONSIN", "ILLINOIS", "INDIANA", "OHIO", "MICHIGAN"),
+  year = paste(year_range),
+  geometry = F) %>%
+  # keep only some of the variables
+  dplyr::select(
+    year, county_name, county_code, state_name, state_alpha,
+    state_fips_code, short_desc, freq_desc, reference_period_desc, Value) %>%
+  # rename the Value column
+  dplyr::rename(area_harvested = Value)
+
+# clean 
+area_h_USMWst <- area_h_USMWst %>% 
+  filter(reference_period_desc == "YEAR") %>% 
+  filter(state_name %in% c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
+                           "IOWA", "MINNESOTA", "WISCONSIN", "ILLINOIS", "INDIANA", "OHIO", "MICHIGAN")) %>% 
+  # select relevant variables
+  select(c("year", "reference_period_desc", "state_alpha", "area_harvested")) %>% 
+  rename("yr" = "year",
+         "state" = "state_alpha") %>% 
+  # Change from MONTH YEAR to actual date format (e.g. NOV 2016 --> 01/01/2016)
+  mutate(country = "US",
+         #year_month_abv = paste(mo, yr),
+         #date = lubridate::ymd(yr, truncated = 2L)
+  )
+
+
+# filter to just date, price, country for plotting 
+area_h_USMW <- area_h_USMWst %>% 
+  group_by(yr, country) %>% 
+  #summarise(area_planted = sum(area_planted))
+  dplyr::summarize(area_harvested = round(sum(area_harvested), digits = 2)) %>% 
+  mutate(description = "US-MW States",
+         country = "US",
+         # convert to from acres to ha
+         # 1 Acre = 0.40468564 Hectare
+         area_harvested = area_harvested*0.40468564)
+
+## 5.4: Join Area Harvested  ---------
+# get Cerr from Area (Section 5.2)
+area_h_BRCerr <- area_BRCerr_states %>% 
+  na.omit() %>% 
+  group_by(yr) %>%
+  dplyr::summarize(area_harvested = round(sum(area_harvested), digits = 2)) %>% 
+  mutate(description = "States with Cerrrado",
+         country = "Brazil")
+
+# 1.3: Get AREA (USMW & BRCerr) #
+df_area_h_USMW_BRCerr <- rbind(area_h_BRCerr, area_h_USMW)
+df_area_h_USMW_BRCerr <- df_area_h_USMW_BRCerr  %>% 
+  filter(yr >= 2007 & yr <= 2017)
+
+## 5.5: Save Areas ----------
+
 
 # 6: Land Transition to Soybean ---------
 
@@ -692,7 +864,20 @@ df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr
 
 # 8: Export all df's to use in next script -----
 
-# Export Production, Price, and Exports
+# Export Production, Price, Area, and Exports
+# save(df_prod_USMW_BRCerr, df_prod_USBR,
+#      df_price_USMW_BRCerr, 
+#      df_exports_USBR_china, df_exports_USBR_world, 
+#      df_yield_USBR, df_yield_USMW_BRCerr,
+#      file = "../Data_Derived/prod_price_yield_exports.RData")
+
+save(df_prod_USMW_BRCerr, df_prod_USBR,
+     df_price_USMW_BRCerr,
+     df_area_h_USMW_BRCerr, df_area_p_USMW_BRCerr,
+     df_exports_USBR_china, df_exports_USBR_world, 
+     df_yield_USBR, df_yield_USMW_BRCerr,
+     file = "../Data_Derived/prod_price_area_yield_exports.RData")
+
 save(df_prod_USMW_BRCerr, df_prod_USBR,
      df_price_USMW_BRCerr, 
      df_exports_USBR_china, df_exports_USBR_world, 
