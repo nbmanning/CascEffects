@@ -51,7 +51,8 @@ F_add_marketyear <- function(df, year_col, area_col){
 
 # 1: Plot Line Plots -----
 
-load("../Data_Derived/prod_price_yield_exports.RData")
+#load("../Data_Derived/prod_price_yield_exports.RData")
+load("../Data_Derived/prod_price_area_yield_exports.RData")
 
 ## 1.0 : Create Plotting Function --------
 F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axis_title){
@@ -81,12 +82,12 @@ F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axi
           legend.position = "none")
 }
 
-(p2_prod_national <- F_plot_harvestMY(
-  df = df2_prod_USBR, x_var = harvest_marketyr, y_var = prod, group_var = country,
-  title = "Annual National Soybean Production",
-  subtitle = "Data Sources: USDA-NASS & SIDRA",
-  y_axis_title = "Production (mt)"
-))
+# (p2_prod_national <- F_plot_harvestMY(
+#   df = df2_prod_USBR, x_var = harvest_marketyr, y_var = prod, group_var = country,
+#   title = "Annual National Soybean Production",
+#   subtitle = "Data Sources: USDA-NASS & SIDRA",
+#   y_axis_title = "Production (mt)"
+# ))
 
 
 ## 1.1: Production --------
@@ -357,7 +358,74 @@ df2_yield_USMW_BRCerr <- F_add_marketyear(df_yield_USMW_BRCerr, yr, country)
 # )
 
 
+## 1.4: Area (Regional) ------------
 
+### 1.4.1 Area Harvested ---------
+
+df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
+
+# plot - DONE
+(p_area_h_regional <- 
+    ggplot(df2_area_h_USMW_BRCerr, aes(x=harvest_marketyr, y=area_harvested, color = country, group = country)) +
+    geom_point() +
+    geom_line() + 
+    geom_vline(aes(xintercept = "2012-2013"), color = "red",
+               linetype="dashed", linewidth=0.5)+
+    theme_bw()+
+    scale_color_manual(
+      name = "Country",
+      values = c(
+        US = "salmon",
+        Brazil = "cornflowerblue"),
+      breaks = c("US", "Brazil"),
+      #labels = c("US-MW", "Cerrado")
+    )+
+    scale_x_discrete()+
+    labs(
+      title = "Annual Regional Soybean Area Harvested",
+      subtitle = "Data Sources: USDA-NASS & SIDRA",
+      x = "",
+      y = "Area (ha)"
+    )+
+    theme(legend.position="none")+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
+          # keep legend on one plot for the final graph
+          #legend.position = "none"
+    )
+)
+
+### 1.4.2 Area Planted -----------
+df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
+
+# plot - DONE
+(p_area_p_regional <- 
+    ggplot(df2_area_p_USMW_BRCerr, aes(x=harvest_marketyr, y=area_planted, color = country, group = country)) +
+    geom_point() +
+    geom_line() + 
+    geom_vline(aes(xintercept = "2012-2013"), color = "red",
+               linetype="dashed", linewidth=0.5)+
+    theme_bw()+
+    scale_color_manual(
+      name = "Country",
+      values = c(
+        US = "salmon",
+        Brazil = "cornflowerblue"),
+      breaks = c("US", "Brazil"),
+      #labels = c("US-MW", "Cerrado")
+    )+
+    scale_x_discrete()+
+    labs(
+      title = "Annual Regional Soybean Area Planted",
+      subtitle = "Data Sources: USDA-NASS & SIDRA",
+      x = "",
+      y = "Area (ha)"
+    )+
+    theme(legend.position="none")+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
+          # keep legend on one plot for the final graph
+          #legend.position = "none"
+    )
+)
 
 # 2: UNCHANGED DATA --------------------------------
 
@@ -507,14 +575,22 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 # 3: Arrange Plots ------------
 ## figure out why there are two legends
 library(patchwork)
-p1 <- p_yield_usmwbrcerr + 
+p1 <- 
+  p_yield_usmwbrcerr + 
   p_yield_usbr +
+  
+  p_area_p_regional+
+  p_area_h_regional+
+  
   p_prod_regional +
   p_prod_national + 
+  
   p_price_usmwbrcerr +  
   p_exportqty_usbr_toworld + 
+  
   p_exportvalue_usbr_toworld + 
   p_exportvalue_usbr_tochina + 
+  
   p_trans_deforest2 + 
   p_trans_tosoy
 
@@ -522,13 +598,30 @@ p1
 
 p2 <- p1 +
   #guides(colour = "none") &
-  plot_layout(nrow = 5, guides = "collect") & 
+  plot_layout(nrow = 6, guides = "collect") & 
   theme(legend.position = 'bottom') & 
   theme(legend.text = element_text(size = 15)) & 
   theme(legend.title = element_text(size = 15))
 
 p2
 
-ggsave(filename = "../Figures/soybeanstats_harvestmarketyear.png",
+ggsave(filename = "../Figures/soybeanstats_harvestmarketyear2.png",
        p2, height = 18, width = 15, 
        dpi = 300)  
+
+
+# 4: Calculate Stats -----
+
+# hard code - no fxn
+
+## Planted Area ##
+
+
+## Production ##
+
+
+## Price ## 
+
+
+## Savannah to Soybean ##
+
