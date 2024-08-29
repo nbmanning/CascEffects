@@ -4,6 +4,9 @@
 # author: Nick Manning
 # purpose: Import and clean only the data that we want to make line plots with
 
+## DEPRECATED ##
+## SUPERCEDED BY '2_1_changedates_lineplots.R' ##
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 rm(list = ls())
