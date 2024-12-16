@@ -22,7 +22,27 @@
 
 rm(list = ls())
 getwd()
+### 11/14 Check spaces for legend test ###
 
+check_column_spaces <- function(data) {
+  # Check if one of the columns exists
+  target_columns <- c("ReporterDesc", "country")
+  existing_column <- intersect(target_columns, colnames(data))
+  
+  if (length(existing_column) == 0) {
+    stop("Neither 'ReporterDesc' nor 'country' column is present in the data.")
+  }
+  
+  # Check for extra spaces in the column
+  col_to_check <- existing_column[1]  # Use the first found column
+  has_extra_spaces <- any(grepl("^\\s|\\s$|\\s{2,}", data[[col_to_check]]))
+  
+  # Print TRUE if extra spaces are found, otherwise FALSE
+  print(has_extra_spaces)
+}
+
+###
+ 
 # 0: Load Libraries & Set Constants ------
 library(tidyverse)
 library(stringr)
@@ -30,10 +50,11 @@ library(terra)
 
 
 breaks <- c(2007, 2012, 2017)
+col_US = "salmon"
+col_BR = "cornflowerblue"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
-# theme_set(theme_bw())
 
 # create function that adds a market year column 
 ## NOTE: the {{}} is used to dynamically refer to the column specified by user rather than having it as a character
@@ -46,6 +67,8 @@ F_add_marketyear <- function(df, year_col, area_col){
       {{area_col}} == "Brazil" ~  paste0(as.character({{year_col}}-1), "-", as.character({{year_col}})),
       TRUE ~ harvest_marketyr
     )) 
+  
+  return(df)
 }
 
 
@@ -68,8 +91,8 @@ F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axi
     scale_color_manual(
       name = "Country",
       values = c(
-        US = "salmon",
-        Brazil = "cornflowerblue"),
+        US = col_US,
+        Brazil = col_BR),
       breaks = c("US", "Brazil"))+
     # set labels
     labs(
@@ -116,8 +139,8 @@ df2_prod_USMW_BRCerr <- F_add_marketyear(df_prod_USMW_BRCerr, yr, country)
    scale_color_manual(
      name = "Country",
      values = c(
-       US = "salmon",
-       Brazil = "cornflowerblue"),
+       US = col_US,
+       Brazil = col_BR),
      breaks = c("US", "Brazil"),
      #labels = c("US-MW", "Cerrado")
    )+
@@ -159,8 +182,8 @@ df2_prod_USBR <- F_add_marketyear(df_prod_USBR, yr, country)
 #    scale_color_manual(
 #      name = "Country",
 #      values = c(
-#        US = "salmon",
-#        Brazil = "cornflowerblue"),
+#        US = col_US,
+#        Brazil = col_BR),
 #      breaks = c("US", "Brazil"))+
 #    labs(
 #      title = "Annual National Soybean Production",
@@ -198,8 +221,8 @@ df2_exports_USBR_china <- F_add_marketyear(df_exports_USBR_china, Period, Report
 #    scale_color_manual(
 #      name = "Country",
 #      values = c(
-#        US = "salmon",
-#        Brazil = "cornflowerblue"),
+#        US = col_US,
+#        Brazil = col_BR),
 #      breaks = c("US", "Brazil"))+
 #    labs(
 #      title = "Annual Soybean Export Value to China",
@@ -231,8 +254,8 @@ df2_exports_USBR_world <- F_add_marketyear(df_exports_USBR_world, Period, Report
 #     scale_color_manual(
 #       name = "Country",
 #       values = c(
-#         US = "salmon",
-#         Brazil = "cornflowerblue"),
+#         US = col_US,
+#         Brazil = col_BR),
 #       breaks = c("US", "Brazil"))+
 #     labs(
 #       title = "Annual Soybean Export Value to World",
@@ -274,8 +297,8 @@ exports2_usbr <- F_add_marketyear(exports_usbr, Year, Area)
 #     scale_color_manual(
 #       name = "Country",
 #       values = c(
-#         US = "salmon",
-#         Brazil = "cornflowerblue"),
+#         US = col_US,
+#         Brazil = col_BR),
 #       breaks = c("US", "Brazil"))+
 #     labs(
 #       title = "Annual Soybean Export Quantity to World",
@@ -309,8 +332,8 @@ df2_yield_USBR <- F_add_marketyear(df_yield_USBR, yr, country)
 #     scale_color_manual(
 #       name = "Country",
 #       values = c(
-#         US = "salmon",
-#         Brazil = "cornflowerblue"),
+#         US = col_US,
+#         Brazil = col_BR),
 #       breaks = c("US", "Brazil"))+
 #     labs(
 #       title = "Annual National Soybean Yield",
@@ -344,8 +367,8 @@ df2_yield_USMW_BRCerr <- F_add_marketyear(df_yield_USMW_BRCerr, yr, country)
 #     scale_color_manual(
 #       name = "Country",
 #       values = c(
-#         US = "salmon",
-#         Brazil = "cornflowerblue"),
+#         US = col_US,
+#         Brazil = col_BR),
 #       breaks = c("US", "Brazil"))+
 #     labs(
 #       title = "Annual Regional Soybean Yield",
@@ -375,8 +398,8 @@ df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
     scale_color_manual(
       name = "Country",
       values = c(
-        US = "salmon",
-        Brazil = "cornflowerblue"),
+        US = col_US,
+        Brazil = col_BR),
       breaks = c("US", "Brazil"),
       #labels = c("US-MW", "Cerrado")
     )+
@@ -408,8 +431,8 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
     scale_color_manual(
       name = "Country",
       values = c(
-        US = "salmon",
-        Brazil = "cornflowerblue"),
+        US = col_US,
+        Brazil = col_BR),
       breaks = c("US", "Brazil"),
       #labels = c("US-MW", "Cerrado")
     )+
@@ -451,8 +474,8 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
    scale_color_manual(
      name = "Country",
      values = c(
-       US = "salmon",
-       Brazil = "cornflowerblue"),
+       US = col_US,
+       Brazil = col_BR),
      breaks = c("US", "Brazil"))+
    geom_vline(aes(xintercept = as.Date("2012-07-01")), color = "red",linetype="dashed", linewidth=0.5, alpha = 0.5)+
    labs(
@@ -466,11 +489,11 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
  
 )
 
-## 2.2: Land Transition -------
+## 2.2: Land Conversion -------
 
 br_int_yr <- 2012
 
-### 2.2.1: Land Transition in the Cerrado --------
+### 2.2.1: Land Conversion in the Cerrado --------
 
 load("../Data_Derived/land_trans_tosoy_df.RData")
 
@@ -479,25 +502,25 @@ df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>%
 
 (p_trans_tosoy <-
     ggplot(df_trans_to_soy_BRCerr_muni, aes(x=yr, y=trans/1000000)) +
-    geom_line(color = "cornflowerblue") + 
-    geom_point(color = "cornflowerblue") +
+    geom_line(color = col_BR) + 
+    geom_point(color = col_BR) +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
     scale_x_continuous(breaks = breaks, labels = breaks)+
     
     theme_bw()+  
     labs(
-      title = "Annual Cerrado Land Transition to Soy",
+      title = "Annual Cerrado Land Conversion to Soy",
       subtitle = "Data Source: Aggregated from municipality-level MapBiomas",
       x = "",
-      y = "Land Transition (Mha)"
+      y = "Land Conversion (Mha)"
     )+
     theme(legend.position="none")+    
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
 
 )
 
-### 2.2.2: Land Transition of Other Classes in the Cerrado --------
+### 2.2.2: Land Conversion of Other Classes in the Cerrado --------
 load("../Data_Derived/land_trans_toclasses_df.RData")
 
 # NOTE: Other Classes includes "Soy Beans", "Pasture",
@@ -511,18 +534,18 @@ df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr
 (p_trans_toclasses <-
     ggplot(df_trans_to_classes_BRCerr_muni, 
            aes(x=yr, y=trans/1000000)) +
-    geom_line(color = "cornflowerblue") + 
-    geom_point(color = "cornflowerblue") +
+    geom_line(color = col_BR) + 
+    geom_point(color = col_BR) +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
     theme_bw()+  
     scale_x_continuous(breaks = breaks, labels = breaks)+
     
     labs(
-      title = "Annual Cerrado Land Transition to Soy & Other Non-Native Cover",
+      title = "Annual Cerrado Land Conversion to Soy & Other Non-Native Cover",
       subtitle = "Aggregated from municipality-level MapBiomas",
       x = "",
-      y = "Land Transition (Mha)"
+      y = "Land Conversion (Mha)"
     )+
     theme(legend.position="none")+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
@@ -533,8 +556,8 @@ df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr
 df_trans_deforest <- read.csv("../Data_Source/Terrabrasilis_CerradoDeforestation.csv")
 (p_trans_deforest <-
     ggplot(df_trans_deforest, aes(x=year, y=area_km2)) +
-    geom_line(color = "cornflowerblue") + 
-    geom_point(color = "cornflowerblue") +
+    geom_line(color = col_BR) + 
+    geom_point(color = col_BR) +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
     scale_x_continuous(breaks = seq(2000, 2022, 2), labels = seq(2000, 2022, 2))+
@@ -553,8 +576,8 @@ df_trans_deforest <- read.csv("../Data_Source/Terrabrasilis_CerradoDeforestation
 df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 (p_trans_deforest2 <-
     ggplot(df_trans_deforest, aes(x=year, y=area_km2)) +
-    geom_line(color = "cornflowerblue") + 
-    geom_point(color = "cornflowerblue") +
+    geom_line(color = col_BR) + 
+    geom_point(color = col_BR) +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
     scale_x_continuous(breaks = breaks, labels = breaks)+
@@ -596,6 +619,18 @@ p1 <-
 
 p1
 
+# manually extract one legend to add to plot since it keeps duplicating
+library(cowplot)
+legend <- cowplot::get_legend(p_prod_national + theme(legend.position = "bottom"))
+combined_plot <- cowplot::plot_grid(
+  p_prod_regional + theme(legend.position = "none"),
+  p_prod_national + theme(legend.position = "none"),
+  legend,
+  ncol = 1,
+  rel_heights = c(1, 1, 0.1)
+)
+
+
 p2 <- p1 +
   #guides(colour = "none") &
   plot_layout(nrow = 6, guides = "collect") & 
@@ -603,9 +638,11 @@ p2 <- p1 +
   theme(legend.text = element_text(size = 15)) & 
   theme(legend.title = element_text(size = 15))
 
+p2 <- p2 + plot_annotation(tag_levels = 'A')
+
 p2
 
-ggsave(filename = "../Figures/soybeanstats_harvestmarketyear2.png",
+ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v2.png",
        p2, height = 18, width = 15, 
        dpi = 300)  
 
