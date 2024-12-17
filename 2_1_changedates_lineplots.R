@@ -659,7 +659,7 @@ p2 <- p2 + plot_annotation(tag_levels = 'A')
 p2
 
 ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v3.png",
-       p2, height = 18, width = 15, 
+       p2, height = 15, width = 18, 
        dpi = 300)  
 
 
