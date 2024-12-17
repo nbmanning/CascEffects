@@ -128,29 +128,41 @@ df2 <- df2 %>%
 
 
 ## 1.2: Initial Mapping --------------
-# load mw states for outline
-# Stack Exchange link: https://stackoverflow.com/questions/50499363/how-to-draw-the-outline-of-multiple-us-states-in-r
-# fifty_states <- fifty_states
-# 
-# # get sf of all fifty states
-# sf_fifty <- sf::st_as_sf(fifty_states, coords = c("long", "lat")) %>% 
-#   group_by(id, piece) %>% 
-#   summarize(do_union = FALSE) %>%
-#   st_cast("POLYGON") %>% 
-#   ungroup()
-# 
-# # filter to US-MW
-# midwest <- sf_fifty %>%
-#   filter(id %in% tolower(mw_st_full))
-# 
-# # set CRS 
-# midwest <- st_set_crs(midwest, 4269)
-# 
-# # get map of county outlines 
-# ggplot(df2)+
-#   geom_sf(aes(color = state))+
-#   theme_bw()+
-#   labs(title = "Counties in US-Midwest", color = "State")
+
+# get all states 
+states <- states(cb = TRUE)
+
+## US-MW ##
+# filter to US-MW 
+states_mw <- states %>%
+  filter(STUSPS %in% mw_st_abv)
+
+# get US-MW Counties ... ?tigris::counties
+# state == The two-digit FIPS code (string) of the state you want, or a vector of codes if you want multiple states. Can also be state name or state abbreviation.
+states_counties <- counties(state = mw_st_abv, cb = FALSE, resolution = "500k", year = NULL)
+# plot to test (and to use for inset map)
+
+ggplot(states_counties)+
+  geom_sf(aes(fill = STATEFP), color = "gray")+
+  #geom_sf(data = states_mw, fill = NA, color = "gray11", size = 0.25)+
+  theme_bw()
+
+## CONUS ##
+# get conus 
+states_conus <- states %>% filter(!STUSPS %in% c("HI","AK", "PR", "VI", "MP", "AS", "GU"))
+
+## Dissolve & Plot ##
+# dissolve by whether each polygon is part of central area
+states_conus_diss <- states_conus %>% group_by(LSAD) %>% summarize() 
+states_mw_diss <- states_mw %>% group_by(LSAD) %>% summarize()
+
+# plot to test (and to use for inset map)
+ggplot(states_mw_diss)+
+  geom_sf(fill = "pink", color = "gray")+
+  geom_sf(data = states_conus_diss, fill = NA, color = "gray11", size = 0.25)+
+  theme_void()
+
+
 # 
 # # save 
 # # ggsave("../Figures/USMW_CountyDiffs/counties.png")
@@ -313,7 +325,10 @@ F_plot_gg_diffpct <- function(data, var, yr){
   
   # plot changes
   p <- ggplot(data)+
-    geom_sf(aes(fill = DiffCut), col = "darkgray", linewidth = 0.1)+
+    geom_sf(aes(fill = DiffCut), 
+            #col = "gray66", 
+            col = "lightpink", 
+            linewidth = 0.1)+
     theme_bw()+
     scale_fill_brewer(palette = "PiYG", direction = 1, drop = F)+
     labs(
@@ -325,10 +340,10 @@ F_plot_gg_diffpct <- function(data, var, yr){
       # fill = str_to_title(paste(
       #   y_var_metric,
       #   "% Change"))
-    )
-  #lines(shp_br_cerr_states, lwd = 0.8, lty = 3, col = "darkgray")
-  
-  # save figure
+    )+
+    geom_sf(data = states_mw, fill = NA, color = "gray55", size = 0.25)
+    
+    # save figure
   ggsave(paste0("../Figures/USMW_CountyDiffs/",
                 "gg_", y_var, "_", yr-1, yr,
                 ".png"), 
@@ -348,6 +363,18 @@ F_plot_gg_diffpct <- function(data, var, yr){
 (p_corn_yield <- F_plot_gg_diffpct(df_diff, "cornDiffPctYield", yr_one))
 (p_corn_prod <- F_plot_gg_diffpct(df_diff, "cornDiffPctProduction", yr_one))
 
+# plot counties w data
+ggplot(df_diff %>% filter(year == 2012))+
+  geom_sf(aes(fill = state), color = "gray")+
+  geom_sf(data = states_mw, fill = NA, color = "gray11", size = 0.25)+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(
+    title = "2012 Data Availability at the County Level for US-MW"
+  )
+
+ggsave("../Figures/2012_USDANASS_Data.png",
+       width=9, height=7)
 
 # 2: Arrange Plots ------------
 library(patchwork)
