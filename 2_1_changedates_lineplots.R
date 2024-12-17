@@ -127,73 +127,88 @@ F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axi
 #   ))
 
 df2_prod_USMW_BRCerr <- F_add_marketyear(df_prod_USMW_BRCerr, yr, country)
+df2_prod_USBR <- F_add_marketyear(df_prod_USBR, yr, country)
+
+
+#y_limits <- range(df2_prod_USBR$prod)
+y_upper <- max(df2_prod_USBR$prod)
+y_lower <- min(df2_prod_USMW_BRCerr$prod)
+y_limits <- range(y_lower, y_upper)
 
 # plot - DONE
 (p_prod_regional <- 
-   ggplot(df2_prod_USMW_BRCerr, aes(x=harvest_marketyr, y=prod, color = country, group = country)) +
-   geom_point() +
-   geom_line() + 
-   geom_vline(aes(xintercept = "2012-2013"), color = "red",
-              linetype="dashed", linewidth=0.5)+
-   theme_bw()+
-   scale_color_manual(
-     name = "Country",
-     values = c(
-       US = col_US,
-       Brazil = col_BR),
-     breaks = c("US", "Brazil"),
-     #labels = c("US-MW", "Cerrado")
-   )+
-   scale_x_discrete()+
-   labs(
-     title = "Annual Regional Soybean Production",
-     subtitle = "Data Sources: USDA-NASS & SIDRA",
-     x = "",
-     y = "Production (mt)"
-   )+
-   theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
-         # keep legend on one plot for the final graph
-         #legend.position = "none"
-         )
+    ggplot(df2_prod_USMW_BRCerr, aes(x=harvest_marketyr, y=prod, color = country, group = country)) +
+    geom_point() +
+    geom_line() + 
+    ylim(y_limits) +  # Use NA for the lower limit
+  geom_vline(aes(xintercept = "2012-2013"), color = "red",
+             linetype="dashed", linewidth=0.5)+
+  theme_bw()+
+  scale_color_manual(
+    name = "Country",
+    values = c(
+      US = col_US,
+      Brazil = col_BR),
+    breaks = c("US", "Brazil"),
+    #labels = c("US-MW", "Cerrado")
+  )+
+  scale_x_discrete()+
+  labs(
+    title = "Annual Regional Soybean Production",
+    subtitle = "Data Sources: USDA-NASS & SIDRA",
+    x = "",
+    y = "Production (mt)"
+  )+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
+        # keep legend on one plot for the final graph
+        #legend.position = "none"
+  )
 )
 
 
 
-### 1.1.2: National (US & BR) ----------
-df2_prod_USBR <- F_add_marketyear(df_prod_USBR, yr, country)
 
+### 1.1.2: National (US & BR) ----------
+
+# Plotted manually so we can compare axes more easily
 
 # plot - DONE
-(p_prod_national <- F_plot_harvestMY(
-  df = df2_prod_USBR, 
-  x_var = harvest_marketyr, y_var = prod, group_var = country,
-  title = "Annual National Soybean Production",
-  subtitle = "Data Sources: USDA-NASS & SIDRA",
-  y_axis_title = "Production (mt)"
-))
+# (p_prod_national <- F_plot_harvestMY(
+#   df = df2_prod_USBR, 
+#   x_var = harvest_marketyr, y_var = prod, group_var = country,
+#   title = "Annual National Soybean Production",
+#   subtitle = "Data Sources: USDA-NASS & SIDRA",
+#   y_axis_title = "Production (mt)"
+# )) 
 
-# (p_prod_national <- ggplot(df2_prod_USBR, aes(x=harvest_marketyr, y=prod, color = country, group = country)) +
-#    geom_line() + 
-#    geom_point() +
-#    geom_vline(aes(xintercept = "2012-2013"), color = "red",
-#               linetype="dashed", linewidth=0.5)+
-#    theme_bw()+
-#    #scale_x_continuous(breaks = breaks, labels = breaks)+
-#    scale_color_manual(
-#      name = "Country",
-#      values = c(
-#        US = col_US,
-#        Brazil = col_BR),
-#      breaks = c("US", "Brazil"))+
-#    labs(
-#      title = "Annual National Soybean Production",
-#      subtitle = "Data Sources: USDA-NASS & SIDRA",
-#      x = "",
-#      y = "Production (mt)"
-#    )+   
-#     theme(axis.text.x = element_text(angle = 90, vjust = 0.8),
-#           legend.position = "none")
-# )
+(p_prod_national <- 
+    ggplot(df2_prod_USBR, aes(x=harvest_marketyr, y=prod, color = country, group = country)) +
+    geom_point() +
+    geom_line() + 
+    ylim(y_limits) +  # Use NA for the lower limit
+    geom_vline(aes(xintercept = "2012-2013"), color = "red",
+               linetype="dashed", linewidth=0.5)+
+    theme_bw()+
+    scale_color_manual(
+      name = "Country",
+      values = c(
+        US = col_US,
+        Brazil = col_BR),
+      breaks = c("US", "Brazil"),
+      #labels = c("US-MW", "Cerrado")
+    )+
+    scale_x_discrete()+
+    labs(
+      title = "Annual National Soybean Production",
+      subtitle = "Data Sources: USDA-NASS & SIDRA",
+      x = "",
+      y = "Production (mt)"
+    )+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
+          # keep legend on one plot for the final graph
+          #legend.position = "none"
+    )
+)
 
 
 ## 1.2: Exports -------
@@ -596,23 +611,24 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 
 
 # 3: Arrange Plots ------------
-## figure out why there are two legends
 library(patchwork)
+
+
 p1 <- 
-  p_yield_usmwbrcerr + 
-  p_yield_usbr +
+  p_prod_regional +
+  p_prod_national +
   
-  p_area_p_regional+
+  p_yield_usmwbrcerr + 
+  #p_yield_usbr +
+  #p_area_p_regional+
   p_area_h_regional+
   
-  p_prod_regional +
-  p_prod_national + 
-  
+ 
   p_price_usmwbrcerr +  
   p_exportqty_usbr_toworld + 
   
-  p_exportvalue_usbr_toworld + 
-  p_exportvalue_usbr_tochina + 
+  #p_exportvalue_usbr_toworld + 
+  #p_exportvalue_usbr_tochina + 
   
   p_trans_deforest2 + 
   p_trans_tosoy
@@ -633,7 +649,7 @@ combined_plot <- cowplot::plot_grid(
 
 p2 <- p1 +
   #guides(colour = "none") &
-  plot_layout(nrow = 6, guides = "collect") & 
+  plot_layout(nrow = 4, guides = "collect") & 
   theme(legend.position = 'bottom') & 
   theme(legend.text = element_text(size = 15)) & 
   theme(legend.title = element_text(size = 15))
@@ -642,7 +658,7 @@ p2 <- p2 + plot_annotation(tag_levels = 'A')
 
 p2
 
-ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v2.png",
+ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v3.png",
        p2, height = 18, width = 15, 
        dpi = 300)  
 
