@@ -30,6 +30,7 @@ library(sf) # intersect
 ## Constants -----
 year_range <- 2000:2020
 BR_abbvs <- read.csv("../Data_Source/br_st_abbv.csv", header = T)
+BRCerr_micro <- read.csv()
 BRCerr_abbvs <- filter(BR_abbvs, biome == "Cerrado")
 BRCerr_state_abbvs <- BRCerr_abbvs$state
 
@@ -89,11 +90,31 @@ raw_sidra <- get_sidra(x = 1612,
                        period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
                        geo = "State", # Brazil, State, or Município
                        geo.filter = NULL,
+                       #geo.filter = list("State" = c(11, 12)), #NULL,
                        classific = "c81",
                        category = list(2713), # Soja (em grão)
                        header = T,
                        format = 3)
 
+# raw_sidra_meso <- get_sidra(x = 1612, 
+#                        variable =  c(214, 109), # production and yield # or for first six (excluding value of production) c(109, 1000109, 216, 1000216,214, 112) 
+#                        period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
+#                        geo = "MesoRegion", # Brazil, State, or Município
+#                        geo.filter = NULL,
+#                        classific = "c81",
+#                        category = list(2713), # Soja (em grão)
+#                        header = T,
+#                        format = 3)
+
+raw_sidra_micro <- get_sidra(x = 1612, 
+                       variable =  c(214, 109), # production and yield # or for first six (excluding value of production) c(109, 1000109, 216, 1000216,214, 112) 
+                       period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
+                       geo = "MicroRegion", # Brazil, State, or Município
+                       geo.filter = NULL,
+                       classific = "c81",
+                       category = list(2713), # Soja (em grão)
+                       header = T,
+                       format = 3)
 # colnames(raw_sidra)
 
 # clean and translate columns
@@ -109,13 +130,17 @@ prod_BR <- raw_sidra %>%
          #variable = str_replace(variable, "Rendimento médio da produção", "yield"
          variable = str_replace(variable, "Área plantada", "ha_planted"),
          yr = as.double(yr)) %>% 
-  select(.,c("yr", "variable", "value", "state_name"))
+  select(.,c("yr", "variable", "value", "state_name", "state_code"))
 
+# left-join w states
 prod_BR <- left_join(prod_BR, BR_abbvs)
 prod_BRCerr_states <- filter(prod_BR, state %in% BRCerr_state_abbvs)
 
+### TO-DO: Filter prod_BR microregions by the list generated in Code 0 to get Production by MicroRegion
+
 # make data wide to match US data and make it easier to merge
 prod_BRCerr_states <- pivot_wider(prod_BRCerr_states, names_from = "variable")
+
 
 # add country and filter to the same variables as US
 prod_BRCerr_states <- prod_BRCerr_states %>% 
@@ -130,8 +155,50 @@ prod_BRCerr <- prod_BRCerr_states %>%
   mutate(description = "States with Cerrrado",
          country = "Brazil")
 
+## 1.2: BR Prod (Cerrado Microregions) ------------------
+# NEW: attempt to edit micro region to be the same as state
+prod_BR2 <- raw_sidra_micro %>% 
+  select("Microrregião Geográfica (Código)", "Microrregião Geográfica", "Ano", "Variável", "Valor") %>% 
+  rename(
+    "code_micro" = "Microrregião Geográfica (Código)",
+    "name_micro_long" = "Microrregião Geográfica",
+    "yr" = "Ano",
+    "variable" = "Variável",
+    "value" = "Valor") %>%  
+  mutate(variable = str_replace(variable, "Quantidade produzida", "prod"),
+         #variable = str_replace(variable, "Rendimento médio da produção", "yield"
+         variable = str_replace(variable, "Área plantada", "ha_planted"),
+         yr = as.double(yr)) %>% 
+  select(.,c("yr", "variable", "value", "name_micro_long", "code_micro"))
+
+prod_BR2$code_micro <- as.double(prod_BR2$code_micro)
+
+prod_BR2 <- left_join(prod_BR2, micro_codes_names_cerr)
+
+prod_BRCerr_micro <- filter(prod_BR2, code_micro %in% micro_codes_cerr)
+
+# make data wide to match US data and make it easier to merge
+prod_BRCerr_micro <- pivot_wider(prod_BRCerr_micro, names_from = "variable")
+
+
+# add country and filter to the same variables as US
+prod_BRCerr_micro <- prod_BRCerr_micro %>% 
+  mutate(country = "Brazil") %>% 
+  select(yr, name_micro, prod, country)
+
+# summarize to regional level
+prod_BRCerr_micro <- prod_BRCerr_micro %>% 
+  na.omit() %>% 
+  group_by(yr) %>%
+  dplyr::summarize(prod = round(sum(prod), digits = 2)) %>% 
+  mutate(description = "MicroRegions with Cerrrado",
+         country = "Brazil")
+
 ## 1.3: Get Prod (USMW & BRCerr) ----
-df_prod_USMW_BRCerr <- rbind(prod_BRCerr, prod_USMW)
+### CHANGED HERE: micro regions instead of states ###
+df_prod_USMW_BRCerr <- rbind(prod_BRCerr_micro, prod_USMW)
+#df_prod_USMW_BRCerr <- rbind(prod_BRCerr, prod_USMW)
+
 df_prod_USMW_BRCerr <- df_prod_USMW_BRCerr  %>% 
   filter(yr >= 2007 & yr <= 2017)
 
@@ -513,8 +580,59 @@ yield_BRCerr <- yield_BRCerr_states %>%
   mutate(description = " Mean States with Cerrrado",
          country = "Brazil")
 
+## 4.5A: BR Yield (Cerrado MicroRegions) -----------
+# get state-level data so we can merge to only those states within the extent of the Cerrado
+raw_yield_BR_micro <- get_sidra(x = 1612, 
+                                 variable =  c(112), # yielduction and yield # or for first six (excluding value of yielduction) c(109, 1000109, 216, 1000216,214, 112) 
+                                 period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
+                                 geo = "MicroRegion", # Brazil, State, or Município
+                                 geo.filter = NULL,
+                                 classific = "c81",
+                                 category = list(2713), # Soja (em grão)
+                                 header = T,
+                                 format = 3)
+
+
+yield_BRCerr_micro <- raw_yield_BR_micro %>% 
+  select("Microrregião Geográfica (Código)", "Microrregião Geográfica", "Ano", "Variável", "Valor") %>% 
+  rename(
+    "code_micro" = "Microrregião Geográfica (Código)",
+    "name_micro_long" = "Microrregião Geográfica",
+    "yr" = "Ano",
+    "variable" = "Variável",
+    "value" = "Valor") %>%  
+  mutate(
+    #variable = str_replace(variable, "Quantidade produzida", "prod"),
+    variable = str_replace(variable, "Rendimento médio da produção", "yield"),
+    #variable = str_replace(variable, "Área plantada", "ha_planted"),
+    yr = as.double(yr)) %>% 
+  select(.,c("yr", "variable", "value", "name_micro_long", "code_micro"))
+
+yield_BRCerr_micro$code_micro <- as.double(yield_BRCerr_micro$code_micro)
+
+yield_BRCerr_micro <- left_join(yield_BRCerr_micro, micro_codes_names_cerr)
+
+yield_BRCerr_micro <- filter(yield_BRCerr_micro, code_micro %in% micro_codes_cerr)
+
+# make data wide to match US data and make it easier to merge
+yield_BRCerr_micro <- pivot_wider(yield_BRCerr_micro, names_from = "variable")
+
+
+# add country and filter to the same variables as US
+yield_BRCerr_micro <- yield_BRCerr_micro %>% 
+  mutate(country = "Brazil") %>% 
+  select(yr, name_micro, yield, country)
+
+# summarize to regional level
+yield_BRCerr_micro <- yield_BRCerr_micro %>% 
+  na.omit() %>% 
+  group_by(yr) %>%
+  dplyr::summarize(yield = round(mean(yield), digits = 2)) %>% 
+  mutate(description = "MicroRegions with Cerrrado Mean",
+         country = "Brazil")
+
 ## 4.6: Get yield (USMW & BRCerr) ----
-df_yield_USMW_BRCerr <- rbind(yield_BRCerr, yield_USMW)
+df_yield_USMW_BRCerr <- rbind(yield_BRCerr_micro, yield_USMW)
 df_yield_USMW_BRCerr <- df_yield_USMW_BRCerr %>% 
   filter(yr >= 2007 & yr <= 2017)
 
@@ -570,7 +688,7 @@ area_p_USMW <- area_p_USMWst %>%
 
 
 
-## 5.2: Cerrado Area Planted --------
+## 5.2: Cerrado Area Planted & Harvested (States) --------
 
 # 1                                                                                                   Área plantada (Hectares) [ a ]
 # 2                                                                              Área plantada - percentual do total geral (%) [ a ]
@@ -625,7 +743,64 @@ area_p_BRCerr <- area_BRCerr_states %>%
          country = "Brazil")
 
 
+## 5.2: Cerrado Area Planted  & Harvested (MicroRegions) --------
+raw_sidra_area_micro <- get_sidra(x = 1612, 
+                            variable =  c(216, 109), # production and yield # or for first six (excluding value of production) c(109, 1000109, 216, 1000216,214, 112) 
+                            period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
+                            geo = "MicroRegion", # Brazil, State, or Município
+                            geo.filter = NULL,
+                            classific = "c81",
+                            category = list(2713), # Soja (em grão)
+                            header = T,
+                            format = 3)
 
+# colnames(raw_sidra)
+
+# clean and translate columns
+area_BRCerr_micro <- raw_sidra_area_micro %>% 
+  select("Microrregião Geográfica (Código)", "Microrregião Geográfica", "Ano", "Variável", "Valor") %>% 
+  rename(
+    "code_micro" = "Microrregião Geográfica (Código)",
+    "name_micro_long" = "Microrregião Geográfica",
+    "yr" = "Ano",
+    "variable" = "Variável",
+    "value" = "Valor") %>%   
+  mutate(variable = str_replace(variable, "Área colhida", "area_harvested"),
+         #variable = str_replace(variable, "Rendimento médio da produção", "yield"
+         variable = str_replace(variable, "Área plantada", "area_planted"),
+         yr = as.double(yr)) %>% 
+  select(.,c("yr", "variable", "value", "name_micro_long", "code_micro"))
+
+area_BRCerr_micro$code_micro <- as.double(area_BRCerr_micro$code_micro)
+
+area_BRCerr_micro <- left_join(area_BRCerr_micro, micro_codes_names_cerr)
+
+area_BRCerr_micro <- filter(area_BRCerr_micro, code_micro %in% micro_codes_cerr)
+
+# make data wide to match US data and make it easier to merge
+area_BRCerr_micro <- pivot_wider(area_BRCerr_micro, names_from = "variable")
+
+
+# add country and filter to the same variables as US
+area_BRCerr_micro <- area_BRCerr_micro %>% 
+  mutate(country = "Brazil") %>% 
+  select(yr, name_micro, area_planted, area_harvested, country)
+
+# summarize to regional level
+area_p_BRCerr_micro <- area_BRCerr_micro %>% 
+  na.omit() %>% 
+  group_by(yr) %>%
+  dplyr::summarize(area_planted = round(sum(area_planted), digits = 2)) %>% 
+  mutate(description = "MicroRegions with Cerrrado Mean",
+         country = "Brazil")
+
+# get area harvested 
+area_h_BRCerr_micro <- area_BRCerr_micro %>% 
+  na.omit() %>% 
+  group_by(yr) %>%
+  dplyr::summarize(area_harvested = round(sum(area_harvested), digits = 2)) %>% 
+  mutate(description = "MicroRegions with Cerrrado Mean",
+         country = "Brazil")
 
 ## 5.3: US-MW Area Harvested ----------
 # get raw data from QuickStats
@@ -683,7 +858,7 @@ area_h_BRCerr <- area_BRCerr_states %>%
          country = "Brazil")
 
 # 1.3: Get AREA (USMW & BRCerr) #
-df_area_h_USMW_BRCerr <- rbind(area_h_BRCerr, area_h_USMW)
+df_area_h_USMW_BRCerr <- rbind(area_h_BRCerr_micro, area_h_USMW)
 df_area_h_USMW_BRCerr <- df_area_h_USMW_BRCerr  %>% 
   filter(yr >= 2007 & yr <= 2017)
 
