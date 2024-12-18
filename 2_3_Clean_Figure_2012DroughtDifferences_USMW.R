@@ -100,22 +100,17 @@ colnames(df)
 
 # transform all to numeric, they were in character
 df <- df %>% rename("state" = "STUSPS", "name" = "NAME") %>% 
-  mutate_at(c("cornArea",              "cornAreaIrrig",        
-              "cornAreaNonIrrig",      "cornAreaPlanted",       "cornPrice",            
-              "cornProd",              "cornProdIrrig",         "cornProdNonIrrig",     
-              "cornYield",             "cornYieldIrrig",        "cornYieldNonIrrig",    
-              "soybeansArea",          "soybeansAreaIrrig",     "soybeansAreaNonIrrig", 
-              "soybeansAreaPlanted",   "soybeansPrice",         "soybeansProd",         
-              "soybeansProdIrrig",     "soybeansProdNonIrrig",  "soybeansYield",        
-              "soybeansYieldIrrig",    "soybeansYieldNonIrrig"), as.numeric)
+  mutate_at(c(
+    "soybeansArea",          "soybeansAreaIrrig",     "soybeansAreaNonIrrig", 
+    "soybeansAreaPlanted",   "soybeansPrice",         "soybeansProd",         
+    "soybeansProdIrrig",     "soybeansProdNonIrrig",  "soybeansYield",        
+    "soybeansYieldIrrig",    "soybeansYieldNonIrrig"), as.numeric)
 
 # select only area harvested, production, and yield
 df2 <- df %>% 
   select("year", "state", "name", "fips", 
-         #"cornArea", "cornAreaPlanted", "cornProd", "cornYield",
          "soybeansArea", "soybeansAreaPlanted", "soybeansProd", "soybeansYield", "soybeansPrice") %>% 
   rename(
-    #"cornAreaHarvested" = "cornArea",
     "soybeansAreaHarvested" = "soybeansArea")
 
 # test to see if price is viable to plot at the county level
@@ -123,18 +118,8 @@ df_t <- df2 %>% filter(year == 2011 | year == 2012) %>% filter(state %in% mw_st_
 sum(is.na(df_t$soybeansPrice))
 # it is not 
 
-# # create corn/soy data by combining production and area harvest, then calculating yield 
-# df2 <- df2 %>% 
-#   mutate(
-#     cornSoyAreaHarvested = cornAreaHarvested + soyAreaHarvested,
-#     cornSoyAreaPlanted = cornAreaPlanted + soybeansAreaPlanted,
-#     cornSoyProd = cornProd + soybeansProd,
-#     cornSoyYield = cornSoyProd/cornSoyAreaPlanted
-#   )
-# 
 
-
-## 1.2: Initial Mapping --------------
+## 1.2: Load Base US Spatial Data --------------
 
 # get all states 
 states <- states(cb = TRUE)
@@ -148,16 +133,12 @@ states_mw <- states %>%
 # get US-MW Counties ... ?tigris::counties
 # state == The two-digit FIPS code (string) of the state you want, or a vector of codes if you want multiple states. Can also be state name or state abbreviation.
 states_counties <- counties(state = mw_st_abv, cb = FALSE, resolution = "500k", year = NULL)
-# plot to test (and to use for inset map)
-
-# ggplot(states_counties)+
-#   geom_sf(aes(fill = STATEFP), color = "gray")+
-#   #geom_sf(data = states_mw, fill = NA, color = "gray11", size = 0.25)+
-#   theme_bw()
 
 ## CONUS ##
 # get conus 
 states_conus <- states %>% filter(!STUSPS %in% c("HI","AK", "PR", "VI", "MP", "AS", "GU"))
+
+## 1.3: Plot Inset --------------
 
 ## Dissolve & Plot ##
 # dissolve by whether each polygon is part of central area
@@ -173,7 +154,7 @@ ggplot(states_mw_diss)+
 ggsave("../Figures/USMW_CountyDiffs/usmw_inset.png")
 
 
-## 1.3 Mapping Yield, Prod, Area ---------
+## 1.4 Mapping Yield, Prod, Area ---------
 
 # set constants and filter data 
 yr_one <- 2012
@@ -338,8 +319,6 @@ F_plot_gg_diffpct <- function(data, var, yr){
   y_var_metric <- as.character(sub(".*Pct", "", y_var))
   
   # set classes
-  #class <- classIntervals(round(data[[y_var]]), n = 11, style = "fisher")
-  
   class <- classIntervals(
     data[[y_var]], 
     fixedBreaks = 
@@ -347,8 +326,6 @@ F_plot_gg_diffpct <- function(data, var, yr){
     style = "fixed")
   
   # set new column with the breaks for mapping
-  # data <- data %>%
-  #   mutate(DiffCut = cut(y_var, class$brks, include.lowest = T))
   data$DiffCut <- cut(data[[y_var]], class$brks, include.lowest = T)
   
   # plot changes
@@ -360,22 +337,13 @@ F_plot_gg_diffpct <- function(data, var, yr){
     theme_bw()+
     scale_fill_brewer(palette = "PiYG", direction = 1, drop = F)+
     labs(
-      # title = paste("% Change in",
-      #               str_to_title(paste(
-      #                 y_var_crop, y_var_metric,
-      #                 "from", yr-1, "to", yr))),
       title = paste0(
         "% Change in ", str_to_title(y_var_metric), 
         " (", yr-1, "-", yr, ")"),
-      fill = "% Change"
-      # fill = str_to_title(paste(
-      #   y_var_metric,
-      #   "% Change"))
-    )+
+      fill = "% Change")+
     theme(
-      #legend.position="bottom", 
-      #legend.box = "horizontal", 
-      #legend.text = element_text(size = 10),
+      axis.ticks = element_blank(),
+      axis.text= element_blank(), 
       plot.title = element_text(hjust = 0.5)
     )+
     geom_sf(data = states_mw, fill = NA, color = "gray55", size = 0.25)
@@ -417,7 +385,7 @@ p2 <- p1 + plot_annotation(tag_levels = 'A') +
 p2
 
 ggsave(filename = "../Figures/USMW_CountyDiffs/USMW_Change_Soy_nolegend.png",
-       p2, height = 8, width = 6, 
+       p2, height = 6, width = 5, 
        dpi = 300)  
 
 
@@ -448,55 +416,76 @@ raw_price_USMWst_annual <- raw_price_USMWst  %>%
 raw_price_USMWst_aug <- raw_price_USMWst  %>% 
   filter(reference_period_desc == "AUG")
 
-# add the shapefile and set as 'sf' type
-df_price <- raw_price_USMWst_aug %>% left_join(states, by = c("state_fips_code" = "GEOID"))
-df_price <- st_as_sf(df_price)
+
+# choose the version of price to plot 
+# f_price <- raw_price_USMWst_annual
+#df_price <- raw_price_USMWst_aug
+
+# PICK UP HERE: select (state_fips_code)
 
 # do the same calculation for price at the state level
-df_diff_2012_price_st <- df_price %>%
+df_diff_2012_price_aug <- raw_price_USMWst_aug %>%
   arrange(state_alpha, year) %>% 
   group_by(state_alpha) %>%
   mutate(
     soyDiffPctPrice = ((price - lag(price))/lag(price))*100) %>% 
-  select(year, state_alpha, state_name, soyDiffPctPrice) %>% na.omit()
+  select(year, state_alpha, state_name, state_fips_code, soyDiffPctPrice) %>% na.omit() %>% 
+  mutate(period = "AUGUST")
 
-### PRICE MANUAL ###
-# set classes
-class_soy_price <- classIntervals(
-  df_diff_2012_price_st[["soyDiffPctPrice"]], 
-  fixedBreaks = 
-    #c(-10, -8, -6, -4, -2, -0.1,0.1, 2, 4, 6, 8, 10),  
-    c(-100, -80, -60, -40, -20, -1,1, 20, 40, 60, 80, 100),
-  
-  style = "fixed")
+df_diff_2012_price_annual <- raw_price_USMWst_annual %>%
+  arrange(state_alpha, year) %>% 
+  group_by(state_alpha) %>%
+  mutate(
+    soyDiffPctPrice = ((price - lag(price))/lag(price))*100) %>% 
+  select(year, state_alpha, state_name, state_fips_code, soyDiffPctPrice) %>% na.omit() %>% 
+  mutate(period = "ANNUAL")
 
-# set new column with the breaks for mapping
-# data <- data %>%
-#   mutate(DiffCut = cut(y_var, class$brks, include.lowest = T))
-df_diff_2012_price_st$DiffCut <- cut(df_diff_2012_price_st[["soyDiffPctPrice"]], class_soy_price$brks, include.lowest = T)
+# rbind differences
+prices <- rbind(df_diff_2012_price_aug, df_diff_2012_price_annual)
+
+# add the shapefile and set as 'sf' type
+df_price <- prices %>%
+  left_join(states, by = c("state_fips_code" = "GEOID")) %>% 
+  st_as_sf()
+
+value_limits <- c(12, 28)  
 
 # plot changes
-(p_test <- ggplot(df_diff_2012_price_st)+
+(p_price <- ggplot(df_price)+
     geom_sf(aes(
-      #fill = DiffCut), # binned 
       fill = soyDiffPctPrice), # continuous
       #col = "gray66", 
       #col = "lightpink", 
       linewidth = 0.1)+
     theme_bw()+
-    #scale_fill_brewer(palette = "PiYG", direction = -1, drop = F)+ # binned
-    scale_fill_distiller(palette = "Greens", direction = 1) + # continuous
-    labs(
-      title = "% Change in Price from 2011-2012" ,
-      fill = "% Change"
-      # fill = str_to_title(paste(
-      #   y_var_metric,
-      #   "% Change"))
+    facet_wrap(~period)+
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 14),
+    
+      legend.position = "bottom",
+      legend.direction = "horizontal",
+      legend.key.width = unit(2, "cm"),
+      
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      
+      strip.text.x = element_text(size = 11, colour = "black"),
+      legend.text = element_text(size = 10),
+      
     )+
+    scale_fill_distiller(
+      palette = "Greens", 
+      limits = value_limits,
+      direction = 1
+      ) + 
+    labs(
+      title = "% Change in Prices from 2011-2012" ,
+      fill = "" # "% Change"
+      )+
     geom_sf(data = states_mw, fill = NA, color = "gray55", size = 0.25)
-)
+  )
 
 # save figure
 ggsave(paste0("../Figures/USMW_CountyDiffs/",
-              "gg_price_20112012.png"), 
-       plot = p_test)
+              "gg_price_annual_facet.png"), 
+       plot = p_price, dpi = 300)
