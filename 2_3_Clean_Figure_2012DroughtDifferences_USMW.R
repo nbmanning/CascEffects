@@ -153,7 +153,7 @@ ggplot(states_mw_diss)+
 ggsave("../Figures/USMW_CountyDiffs/usmw_inset.png")
 
 
-## 1.4 Mapping Yield, Prod, Area ---------
+## 1.4 Mapping Changes in Yield, Prod, Area ---------
 
 # set constants and filter data 
 yr_one <- 2012
@@ -168,60 +168,6 @@ df2 <- df2 %>% filter(year >= yr_min)
 df2_yr <- df2 %>% filter(year == yr_one)
 
 df2_range <- df2 %>% filter(year %in% yr_range)
-
-### 1.3.1: Map Single Year Single Var --------
-
-# Function for one year of interest and one variable
-F_plot_single <- function(data, var, yr){
-  
-  y_var <- as.character(var)
-  data <- data %>% filter(year == yr)
-  
-  p <- ggplot(data)+
-    geom_sf(# %>% filter(year == 2010), 
-      aes(fill = .data[[y_var]]), 
-      #col = "lightgrey", 
-      lwd = 0, col = NA)+
-    theme_bw()+
-    theme(
-      plot.title = element_text(size=18, hjust = 0.5),
-      legend.position="bottom", legend.box = "horizontal", 
-    )+
-    scale_fill_distiller(palette = "Greens", direction = 1
-    )+
-    labs(title = paste(yr, "US-MW", var))
-  
-  ggsave(paste0("../Figures/USMW_CountyDiffs/",
-                y_var, "_", yr,
-                ".png"), 
-         plot = p)
-  
-  return(p)
-  
-}
-
-### 1.3.1: Apply Single Year Single Var ------
-
-F_plot_single(df2_range, "soybeansProd", yr = yr_one)
-
-var_names <- c("soybeansProd",  "soybeansYield", "soybeansAreaPlanted") 
-#lapply(var_names, F_plot_single, data = df2_range, yr = 2010)
-
-
-
-# plot counties w data
-ggplot(df_diff %>% filter(year == 2012))+
-  geom_sf(aes(fill = state), color = "gray")+
-  geom_sf(data = states_mw, fill = NA, color = "gray11", size = 0.25)+
-  theme_bw()+
-  theme(legend.position="none")+
-  labs(
-    title = "2012 Data Availability at the County Level for US-MW"
-  )
-
-ggsave("../Figures/2012_USDANASS_Data.png",
-       width=9, height=7)
-
 
 
 ## 1.4: Plot Changes from 2011-2012 in corn, soy, corn/soy --------
@@ -417,3 +363,65 @@ df_price <- prices %>%
 ggsave(paste0("../Figures/USMW_CountyDiffs/",
               "gg_price_annual_facet.png"), 
        plot = p_price, dpi = 300)
+
+# GRAVEYARD ------------------------------
+
+# This section contains functional code that creates plots we did not include in our manuscript but are useful 
+
+## G1.1: Map Single Year, Single Variable --------
+
+# Function for one year of interest and one variable
+F_plot_single <- function(data, var, yr){
+  
+  y_var <- as.character(var)
+  data <- data %>% filter(year == yr)
+  
+  p <- ggplot(data)+
+    geom_sf(# %>% filter(year == 2010), 
+      aes(fill = .data[[y_var]]), 
+      #col = "lightgrey", 
+      lwd = 0, col = NA)+
+    theme_bw()+
+    theme(
+      plot.title = element_text(size=18, hjust = 0.5),
+      legend.position="bottom", legend.box = "horizontal", 
+    )+
+    scale_fill_distiller(palette = "Greens", direction = 1
+    )+
+    labs(title = paste(yr, "US-MW", var))
+  
+  ggsave(paste0("../Figures/USMW_CountyDiffs/",
+                y_var, "_", yr,
+                ".png"), 
+         plot = p)
+  
+  return(p)
+  
+}
+
+## G1.2: Apply Single Year Single Var ------
+
+# change yr_choice to see Soybean Prod, Yield, AreaPlanted Maps for that year 
+
+yr_choice <- 2010 
+
+var_names <- c("soybeansProd",  "soybeansYield", "soybeansAreaPlanted") 
+
+lapply(var_names, F_plot_single, data = df2_range, yr = yr_choice)
+
+
+## G2: Plot counties with available 2012 data -------
+
+# plot counties w data
+ggplot(df_diff %>% filter(year == 2012))+
+  geom_sf(aes(fill = state), color = "gray")+
+  geom_sf(data = states_mw, fill = NA, color = "gray11", size = 0.25)+
+  theme_bw()+
+  theme(legend.position="none")+
+  labs(
+    title = "2012 Data Availability at the County Level for US-MW"
+  )
+
+ggsave("../Figures/2012_USDANASS_Data.png",
+       width=9, height=7)
+
