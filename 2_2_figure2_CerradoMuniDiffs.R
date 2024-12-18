@@ -260,6 +260,17 @@ crop <- crop # either "soy", "maize", or "sm"
 sf_crop <-sf %>% 
   select(NM_MUN, SIGLA, CODE, year, soy_yield, soy_prod, soy_area)
 
+# test (8/29/2024) - check and see if we sum all of the changes that we can get the total change per Cerrado
+# e.g. sum all differences (per muni) from 2013-2012 and divide that by total original. 
+# Would this be the same as (sum(2013)-sum(2012))/sum(2012)*100 
+# even more granular, is (sum(2013)-sum(2012)) the same as sum(2013-2012). Yes! Def can. 
+
+
+#print(global(r_aoi$new_LND_MAZ, fun = "sum", na.rm = T))
+sum(t_1213$area_diff,na.rm=TRUE)
+sum(t_1213$soy_area,na.rm=TRUE)
+
+
 # add function, comment out 
 F_calc_diff <- function(data, year1, year2){
   lagtime <- year2 - year1
@@ -283,13 +294,35 @@ F_calc_diff <- function(data, year1, year2){
       years = as.character(paste0(
         year1-1, "/", year1, " - ", year2-1, "/", year2
       ))
-    )
+    ) %>% 
+    # keep only the two years we are interested in 
+    filter(year == year1 | year == year2)
+  
+  # get stats as well
+  # print the total change in crop production
+  cat("\n\n PROD: % Change \n")
+  sum_diff <- sum(newdf$production_diff, na.rm = T)
+  sum_old <- sum(newdf[year = year1]$soy_prod)
+  print(sum_diff / sum_old *100)
+
+  cat("\n\n AREA: % Change \n")
+  sum_diff <- sum(newdf$area_diff, na.rm = T)
+  sum_old <- sum(newdf[year = year1]$soy_area)
+  print(sum_diff / sum_old *100)  
+  
+  cat("\n\n YIELD: % Change \n")
+  sum_diff <- sum(newdf$yield_diff, na.rm = T)
+  sum_old <- sum(newdf[year = year1]$soy_yield)
+  print(sum_diff / sum_old *100)
+  
   
   # PICK UP HERE: TEST IF THIS CODE GETS NON-SEQUENTIAL YEARS W/O MESSING EVERYTHING ELSE UP
   # TEST:
+  # get only the later year to remove all change NA's since we're only focused on change
   newdf <- newdf %>% filter(year == year2)
 
-  }
+}
+
 
 # Works!!
 sf_crop_diff <- F_calc_diff(sf_crop, 2012, 2017)
@@ -369,6 +402,7 @@ t_1213 <- F_calc_diff(sf, 2012, 2013)
 t_1215 <- F_calc_diff(sf, 2012, 2015)
 t_1217 <- F_calc_diff(sf, 2012, 2017)
 t_1222 <- F_calc_diff(sf, 2012, 2022)
+
 
 
 # rbind to get one long df 
