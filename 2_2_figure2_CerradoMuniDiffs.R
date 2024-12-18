@@ -113,6 +113,7 @@ F_clean_ag <- function(df, stat){
 # Then, plot. DONE
 
 
+
 # yield
 m_yield <- F_clean_ag(source_maize_yield, "yield")
 
@@ -267,8 +268,8 @@ sf_crop <-sf %>%
 
 
 #print(global(r_aoi$new_LND_MAZ, fun = "sum", na.rm = T))
-sum(t_1213$area_diff,na.rm=TRUE)
-sum(t_1213$soy_area,na.rm=TRUE)
+# sum(t_1213$area_diff,na.rm=TRUE)
+# sum(t_1213$soy_area,na.rm=TRUE)
 
 
 # add function, comment out 
@@ -290,10 +291,15 @@ F_calc_diff <- function(data, year1, year2){
 
       # add labels to track
       # years = as.character(paste(year2, "-", year1))
+      
       # 3/22/24: change "years" column from "2013 - 2012" to "2011/2012 - 2012/2013"
       years = as.character(paste0(
         year1-1, "/", year1, " - ", year2-1, "/", year2
       ))
+      # 12/18/24: went back to simple: this reads 2012-2013 
+      # years = as.character(paste0(
+      #   year1, " - ", year2
+      # ))
     ) %>% 
     # keep only the two years we are interested in 
     filter(year == year1 | year == year2)
@@ -390,9 +396,44 @@ sf_crop_diff <- F_calc_diff(sf_crop, 2012, 2017)
 
 ## 4.2 With Function ----------
 
+### 4.2.1: Load Spatial Data ------
+# Load spatial data for states and cerrado
+shp_br <- read_country(
+  year = 2019, 
+  simplified = T
+)
+
+shp_br_cerr <- read_biomes(
+  year = 2019,
+  simplified = T,
+  showProgress = T
+) %>% dplyr::filter(name_biome == "Cerrado")
+
+shp_cerr_states <- read_state(
+  year = 2019, 
+  simplified = T,
+  showProgress = T 
+) %>% 
+  dplyr::filter(abbrev_state %in% c(
+    "BA", "DF", "GO", "MA", "MT", "MS", "MG", "PR", "PI", "SP", "TO"
+  ))
+
+### 4.2.2: Create Inset Map ----
+
+(br_inset <- ggplot()+
+   geom_sf(data = shp_br, color = "gray60", fill = "transparent", lwd = 0.1)+
+   geom_sf(data = shp_br_cerr, color = "lightgreen", fill = "lightgreen", lwd = 0.5)+
+   geom_sf(data = shp_cerr_states, color = "gray20", fill = "transparent", lwd = 0.2)+
+   # geom_sf_text(data = shp_cerr_states %>% filter(abbrev_state != "DF"), 
+   #              aes(label = abbrev_state), size = 3, color = "gray10") +  # Add state labels
+   # geom_sf_text(data = shp_cerr_states %>% filter(abbrev_state == "DF"), 
+   #              aes(label = abbrev_state), size = 1, color = "gray10") +  # Add state labels
+   theme_void()
+)
+  
 
 
-## 4.X: TEST running F_calc_diff then rbind then plot in a grid -----
+## 4.3: TEST running F_calc_diff then rbind then plot in a grid -----
 
 
 # create three test datasets by running through soy with different years 
@@ -418,7 +459,7 @@ names(t)
 
 #st_write(t, "../Data_Derived/soy_diff_yap_")
 
-F_facet <- function(data, var){
+F_facet <- function(data, var, units){
   
   # TEST: rename for joining -- don't need to do if we keep the previous geometry 
   ### NOTE: MIGHT NEED TO USE THE GEOBR 'SF' VARIABLE INSTEAD ###
@@ -433,26 +474,38 @@ F_facet <- function(data, var){
     geom_sf(aes(fill = !!sym(var), geometry = geom), col = "darkgray", linewidth = 0.02)+
     theme_bw()+
     facet_wrap(~years, nrow = 1)+
-    #theme(strip.clip = "off")+
-    #theme(strip.text = element_text(size = 18))+
     #scale_fill_brewer(palette = pal, direction = 1, drop = F)+
     # use the custom theme 
     scale_fill_scico(palette = "bam", direction = 1, na.value = "white",
                      midpoint = 0)+
+    
     labs(
       # title = paste("Raw Change in",
       #               str_to_title(paste(
       #                 "production",
       #                 "from", year1, "to", year2))),
       # fill = "Raw Change in \n Production",
-      fill = str_to_title(paste(y_var_title, "Change")),
+      fill = paste0(str_to_title(paste(y_var_title, "Change")),"\n",
+                    "(", units, ")"),
       x = "",
       y = ""
-    )
+    )+
+    theme(
+      legend.text = element_text(size = 12),
+      legend.title = element_text(size = 14),
+      #theme(strip.clip = "off")+
+      strip.text = element_text(size = 15))
+  
+  # add State & Cerrado outlines  
+  p <- p +
+    geom_sf(data = shp_cerr_states, color = "gray40", fill = "transparent", lwd = 0.1)#+
+    #geom_sf(data = shp_br_cerr, color = "gray10", fill = "transparent", lwd = 0.2)
+
+    
 
   # save figure
   ggsave(paste0("../Figures/CerradoMuni/",
-                "gg_", crop, "_facet_", y_var,
+                "_gg_", crop, "_facet_", y_var,
                 ".png"),
          plot = p,
          width = 12,
@@ -462,20 +515,37 @@ F_facet <- function(data, var){
   
 }
 
+# adjust units; originals are production_diff in tons, yield_diff in kg/ha, and area_diff in ha
+t <- t %>% 
+  mutate(
+    production_diff = production_diff/1000,
+    area_diff = area_diff/1000
+  )
+
 # plot each then arrange on top of each other 
-pf_prod <- F_facet(t, "production_diff")
-pf_yield <- F_facet(t, "yield_diff")
-pf_area <- F_facet(t, "area_diff")
+pf_prod <- F_facet(t, "production_diff", units = "1000 tons")
+pf_yield <- F_facet(t, "yield_diff", units = "kg/ha")
+pf_area <- F_facet(t, "area_diff", units = "kha")
 
 # arrange
-pf_yap <- plot_grid(pf_yield, pf_area, pf_prod,
-                     nrow = 3,
-                     #labels = c("A", "B", "C"),
-                     align = "hv")
+# pf_yap <- plot_grid(pf_yield, pf_area, pf_prod,
+#                      nrow = 3,
+#                      #labels = c("A", "B", "C"),
+#                      align = "hv")
+
+library(patchwork)
+
+# Plot on a grid - add legend after as three have NA's
+p1 <- pf_prod + pf_yield + pf_area #+ p_corn_yield + p_corn_prod
+p1 <- p1 + plot_layout(nrow = 3) + plot_annotation(tag_levels = 'A')
+
+ggsave(paste0("../Figures/CerradoMuni/_gg_facet_soy_yap_2013_2015_2017_2022.png"),
+       plot = p1, width = 14, height = 12)
+
 
 # MANUALLY CHANGE
 # save
-ggsave(paste0("../Figures/CerradoMuni/gg_facet_", crop, "_yap_2013_2015_2017_2022.png"),
+ggsave(paste0("../Figures/CerradoMuni/_gg_facet_", crop, "_yap_2013_2015_2017_2022.png"),
        plot = pf_yap)
 
 ## export new sf ##
