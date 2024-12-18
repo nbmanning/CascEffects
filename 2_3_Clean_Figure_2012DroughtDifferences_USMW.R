@@ -42,10 +42,10 @@ library(RColorBrewer)
 library(classInt) # for mapping and setting breaks 
 library(reshape2)
 
-#library(lubridate)
-#library(terra)
+### Constants ###
 
-# constants
+## key for tidyusda() - should be personal for each user
+usda_key <- "34BD2DD3-9049-37A1-BC2C-D8A967E25E42"
 
 ## paths and files 
 file_path <- "../Data_Source/"
@@ -113,10 +113,9 @@ df2 <- df %>%
   rename(
     "soybeansAreaHarvested" = "soybeansArea")
 
-# test to see if price is viable to plot at the county level
+# test to see if price is viable to plot at the county level -- it is not
 df_t <- df2 %>% filter(year == 2011 | year == 2012) %>% filter(state %in% mw_st_abv)
 sum(is.na(df_t$soybeansPrice))
-# it is not 
 
 
 ## 1.2: Load Base US Spatial Data --------------
@@ -130,8 +129,8 @@ states_mw <- states %>%
   
   filter(STUSPS %in% mw_st_abv)
 
-# get US-MW Counties ... ?tigris::counties
-# state == The two-digit FIPS code (string) of the state you want, or a vector of codes if you want multiple states. Can also be state name or state abbreviation.
+# get US-MW Counties 
+# NOTE: state == The two-digit FIPS code (string) of the state you want, or a vector of codes if you want multiple states. Can also be state name or state abbreviation.
 states_counties <- counties(state = mw_st_abv, cb = FALSE, resolution = "500k", year = NULL)
 
 ## CONUS ##
@@ -183,25 +182,10 @@ F_plot_single <- function(data, var, yr){
       aes(fill = .data[[y_var]]), 
       #col = "lightgrey", 
       lwd = 0, col = NA)+
-    #geom_sf(data = midwest, col = col_border, lwd = 1, fill = NA)+
     theme_bw()+
     theme(
-      # #remove ticks
-      # axis.ticks = element_blank(),
-      # axis.text= element_blank(), 
-      # axis.line = element_blank(),
-      # panel.border = element_blank(),
-      # # make transparent
-      # panel.grid.major = element_line(color='transparent'),
-      # panel.grid.minor = element_line(color='transparent'),
-      # panel.background = element_blank(),
-      # plot.background = element_rect(fill = "transparent",color='transparent'),
-      
       plot.title = element_text(size=18, hjust = 0.5),
       legend.position="bottom", legend.box = "horizontal", 
-      #legend.justification='right',
-      #legend.title = element_text(size=13), #change legend title font size
-      #legend.text = element_text(size=11)
     )+
     scale_fill_distiller(palette = "Greens", direction = 1
     )+
@@ -217,25 +201,12 @@ F_plot_single <- function(data, var, yr){
 }
 
 ### 1.3.1: Apply Single Year Single Var ------
-#F_plot_single(df2_range, "cornSoyProd", yr = yr_one)
-# get prod, area, yield vars
-# var_names <- c("cornAreaHarvested", "cornProd", "cornYield", "cornAreaPlanted", 
-#                "cornAreaHarvested", "soybeansProd",  "soybeansYield", "soybeansAreaPlanted",
-#                "cornSoyAreaHarvested", "cornSoyProd", "cornSoyYield", "cornSoyAreaPlanted") 
-# 
 
 F_plot_single(df2_range, "soybeansProd", yr = yr_one)
-var_names <- c(
-  #"cornAreaHarvested", "cornProd", "cornYield", "cornAreaPlanted", "cornAreaHarvested", 
-  "soybeansProd",  "soybeansYield", "soybeansAreaPlanted"
-  #,"cornSoyAreaHarvested", "cornSoyProd", "cornSoyYield", "cornSoyAreaPlanted"
-  ) 
 
-
-
-# # # UNCOMMENT TO RUN OVER ALL VARIABLES # # #
-##### TO-DO: Fix Legend Labels and Title ----
+var_names <- c("soybeansProd",  "soybeansYield", "soybeansAreaPlanted") 
 #lapply(var_names, F_plot_single, data = df2_range, yr = 2010)
+
 
 
 # plot counties w data
@@ -259,52 +230,23 @@ ggsave("../Figures/2012_USDANASS_Data.png",
 df_diff <- df2_range %>% 
   group_by(state, name) %>%
   mutate(
-    # Difference = 2012 - 2011 per county
-    # cornSoyDiffYield = cornSoyYield - lag(cornSoyYield),
-    # cornSoyDiffProd = cornSoyProd - lag(cornSoyProd),
-    # cornSoyDiffArea = cornSoyAreaHarvested - lag(cornSoyAreaHarvested),
     
     # Percent Change = ( (2012value - 2011value) / 2011value ) *100
     
-    # # cornSoy
-    # cornSoyDiffPctYield = ((cornSoyYield - lag(cornSoyYield))/lag(cornSoyYield))*100,
-    # cornSoyDiffPctProduction = ((cornSoyProd - lag(cornSoyProd))/lag(cornSoyProd))*100,
-    # cornSoyDiffPctAreaHarvested = ((cornSoyAreaHarvested - lag(cornSoyAreaHarvested))/lag(cornSoyAreaHarvested))*100,
-    # cornSoyDiffPctAreaPlanted = ((cornSoyAreaPlanted - lag(cornSoyAreaPlanted))/lag(cornSoyAreaPlanted))*100,
-    # 
-    # # Corn
-    # cornDiffPctYield = ((cornYield - lag(cornYield))/lag(cornYield))*100,
-    # cornDiffPctProduction = ((cornProd - lag(cornProd))/lag(cornProd))*100,
-    # cornDiffPctAreaHarvested = ((cornAreaHarvested - lag(cornAreaHarvested))/lag(cornAreaHarvested))*100,
-    # cornDiffPctAreaPlanted = ((cornAreaPlanted - lag(cornAreaPlanted))/lag(cornAreaPlanted))*100,
-    
-    # Soy
     soyDiffPctYield = ((soybeansYield - lag(soybeansYield))/lag(soybeansYield))*100,
     soyDiffPctProduction = ((soybeansProd - lag(soybeansProd))/lag(soybeansProd))*100,
     soyDiffPctAreaHarvested = ((soybeansAreaHarvested - lag(soybeansAreaHarvested))/lag(soybeansAreaHarvested))*100,
     soyDiffPctAreaPlanted = ((soybeansAreaPlanted - lag(soybeansAreaPlanted))/lag(soybeansAreaPlanted))*100
-  ) %>% 
+  
+    ) %>% 
   select(year, state, name, 
-         #cornSoyDiffYield, cornSoyDiffProduction, cornSoyDiffArea, 
-         #cornDiffPctYield, cornDiffPctProduction, cornDiffPctAreaHarvested, cornDiffPctAreaPlanted,
          soyDiffPctYield, soyDiffPctProduction, soyDiffPctAreaHarvested, soyDiffPctAreaPlanted#,
-         #cornSoyDiffPctYield, cornSoyDiffPctProduction, cornSoyDiffPctAreaHarvested, cornSoyDiffPctAreaPlanted
   ) %>% na.omit()
 
 
 # get just the changes from 2011-2012
 df_diff_2012 <- df_diff %>% filter(year == yr_one)
   
-
-# mess with str_split
-# help: https://statisticsglobe.com/extract-substring-before-or-after-pattern-in-r
-# t <- "soyDiffPctYield"
-# # get all before Diff
-# t1 <- sub("Diff.*","",t)
-# t1
-# t2 <- sub(".*Pct", "", t)
-# t2
-
 # Create Fxn
 F_plot_gg_diffpct <- function(data, var, yr){
   
@@ -358,19 +300,9 @@ F_plot_gg_diffpct <- function(data, var, yr){
   
 }
 
-
-# test
-# (p_soy_yield <- F_plot_gg_diffpct(df_diff, "soyDiffPctYield", yr_one))
-
 # get each plot to add to a grid later
 (p_soy_yield <- F_plot_gg_diffpct(df_diff, "soyDiffPctYield", yr_one))
 (p_soy_prod <- F_plot_gg_diffpct(df_diff, "soyDiffPctProduction", yr_one))
-
-#F_plot_gg_diffpct(df_diff_2012_price_st, "soyDiffPctPrice", yr_one)
-
-#(p_corn_yield <- F_plot_gg_diffpct(df_diff, "cornDiffPctYield", yr_one))
-#(p_corn_prod <- F_plot_gg_diffpct(df_diff, "cornDiffPctProduction", yr_one))
-
 
 # 2: Arrange Plots ------------
 library(patchwork)
@@ -390,11 +322,12 @@ ggsave(filename = "../Figures/USMW_CountyDiffs/USMW_Change_Soy_nolegend.png",
 
 
 # 3: Plot Price for SI--------
-## XX: Test Price ---------
+# set year range 
 year_range <- 2011:2012
 
+# get price at state level from USDA-QuickStats
 raw_price_USMWst <- getQuickstat(
-  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  key = usda_key,
   program = "SURVEY",
   data_item = "SOYBEANS - PRICE RECEIVED, MEASURED IN $ / BU",
   commodity = "SOYBEANS",
@@ -410,20 +343,17 @@ raw_price_USMWst <- getQuickstat(
   # rename the Value column
   dplyr::rename(price = Value) 
 
+# filter to ANNUAL or AUGUST to compare between the two
 raw_price_USMWst_annual <- raw_price_USMWst  %>% 
   filter(freq_desc == "ANNUAL")
 
 raw_price_USMWst_aug <- raw_price_USMWst  %>% 
   filter(reference_period_desc == "AUG")
 
+# Calculate the differences between 2012 vs. 2011 
+# NOTE: have to do this separately or else we'll be comparing between ANNUAL and AUGUST
 
-# choose the version of price to plot 
-# f_price <- raw_price_USMWst_annual
-#df_price <- raw_price_USMWst_aug
-
-# PICK UP HERE: select (state_fips_code)
-
-# do the same calculation for price at the state level
+# AUGUST
 df_diff_2012_price_aug <- raw_price_USMWst_aug %>%
   arrange(state_alpha, year) %>% 
   group_by(state_alpha) %>%
@@ -432,6 +362,7 @@ df_diff_2012_price_aug <- raw_price_USMWst_aug %>%
   select(year, state_alpha, state_name, state_fips_code, soyDiffPctPrice) %>% na.omit() %>% 
   mutate(period = "AUGUST")
 
+# ANNUAL
 df_diff_2012_price_annual <- raw_price_USMWst_annual %>%
   arrange(state_alpha, year) %>% 
   group_by(state_alpha) %>%
@@ -448,14 +379,12 @@ df_price <- prices %>%
   left_join(states, by = c("state_fips_code" = "GEOID")) %>% 
   st_as_sf()
 
-value_limits <- c(12, 28)  
+# set limits to the plot - this could be less hard-coded
 
 # plot changes
 (p_price <- ggplot(df_price)+
     geom_sf(aes(
-      fill = soyDiffPctPrice), # continuous
-      #col = "gray66", 
-      #col = "lightpink", 
+      fill = soyDiffPctPrice),
       linewidth = 0.1)+
     theme_bw()+
     facet_wrap(~period)+
@@ -475,7 +404,6 @@ value_limits <- c(12, 28)
     )+
     scale_fill_distiller(
       palette = "Greens", 
-      limits = value_limits,
       direction = 1
       ) + 
     labs(
