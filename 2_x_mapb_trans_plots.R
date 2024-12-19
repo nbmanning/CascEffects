@@ -3,7 +3,11 @@
 # title: 2_mapb_trans_plots.R
 # author: Nick Manning
 # purpose: Re-use code from SIMPLE-G to plot certain land transititon categories from mapbiomas
-# NOTE: Cleaning code is from "aggStats_MapBiomas.R" and filter/plot code from "lineplot_trans_MapB_Cerr_lvl4.R"
+# created date:
+# last edit date: 12/19/24
+
+# NOTE: 
+### Cleaning code is from "aggStats_MapBiomas.R" and filter/plot code from "lineplot_trans_MapB_Cerr_lvl4.R"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # 0) Set Paths & Constants & Libraries -------
