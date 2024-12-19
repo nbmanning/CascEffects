@@ -76,47 +76,28 @@ load(file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
 # load municipality codes for Cerrado 
 load(file = paste0(folder_derived, "muni_codes_cerr.Rdata"))
 
+
+
 # 2) Filter & Calculate Stats ---------
 
-# SUMMARY: 
-
 ## 2.1) Filter ------
-# filter to only "Temporary Crops" & From-To's that do not stay the same
-df <- df #%>% 
- # filter(to_level_3 == "Temporary Crops") %>%
- # filter(to_level_3 != from_level_3)
 
-# get 
 df_g <- df
-
-# maybe: plot "from" specific classes
-
-# Broader 
-# names_from <- c("Forest Formation", "Grassland", "Mosaic of Agriculture and Pasture",
-#                 "Pasture", "Other Temporary Crops", "Other Perennial Crops",
-#                 "Savanna Formation", "Soy Beans", "Sugar Cane", "Wetland")
-
-# Fewer, but more specific, classes
-# names_from <- c("Forest Formation", "Grassland", "Pasture", "Savanna", "Wetland")
 
 # filter to Level 4 data in Cerrado
 df_g <- df_g %>% 
+  
+  # filter to municipalities from spatial intersection instead of biome == Cerrado to be consistent with previous maps
   filter(geocode %in% muni_codes_cerr) %>%
-  # filter(from_level_4 %in% names_from) %>%
   
   # important as this makes sure we only have things that changed 
   filter(to_level_4 != from_level_4) %>%
   
   # Create from-to column
-  mutate(fromto = paste0(from_level_4, " to ", to_level_4)) #%>% 
-  #filter(biome == "Cerrado")
-
-# get csv of all the unique columns - useful for choosing filter levels
-# names_df_g <- df_g %>% dplyr::select(from_level_4, to_level_4, fromto) %>% distinct()
-# write.csv(names_df_g, "../Data_Source/MapBiomas/names_fromto.csv", row.names = F)
+  mutate(fromto = paste0(from_level_4, " to ", to_level_4)) 
 
 
-## 2.2) Calc. & Print Stats ------
+## 2.2) Calc. Stats ------
 
 ### CLASSES #####
 classes_lvl_4 <- c("Pasture", "Soy Beans", "Other Temporary Crops",
@@ -149,27 +130,13 @@ names_fromto <-c(
 
 ### Calculate ------
 
-
-
-# calculate each of the 11 main Lvl 4 "TO" classes per year 
-# Remember that each year is the year that came before it to that year, e.g. 2011 is "from 2010, to 2011"
-df_g_to_all <- df_g %>% 
-  group_by(year, to_level_4) %>%
-  na.omit() %>% 
-  summarize(total_trans = sum(ha)) %>% 
-  filter(to_level_4 %in% classes_lvl_4) %>% 
-  filter(year %in% yr_range) #%>% 
-  #mutate(year = as.Date(paste(year, 1, 1), '%Y %m %d'))
-
-
 # get only the specifically mentioned "from-to" categories of interest
 df_g_specific_fromto <- df_g %>% 
   filter(fromto %in% names_fromto) %>% 
   group_by(year, fromto) %>% 
   na.omit() %>% 
   summarise(total_trans = sum(ha)) %>% 
-  filter(year %in% yr_range) #%>% 
-  #mutate(year = as.Date(paste(year, 1, 1), '%Y %m %d'))
+  filter(year %in% yr_range) 
 
 # create intervals
 df_g_specific_fromto <- df_g_specific_fromto %>% 
@@ -182,7 +149,6 @@ ggplot(df_g_specific_fromto, aes(x=years, y=total_trans/1000000, group = fromto,
   geom_line() +
   geom_point(fill = "white", size = 0.8) +
   xlab("")+
-  #scale_x_date(date_labels = "%Y")+
   labs(title = paste("Cerrado Annual Land Transition"),
        #subtitle = "Data Source: MapBiomas",
        #caption = "Dotted line shows the transitions from 2012 to 2013",
@@ -215,6 +181,20 @@ ggsave(
   height = 4
 )
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ### Stats ###### 
 # Broader 
 names_from <- c("Forest Formation", "Grassland", "Mosaic of Agriculture and Pasture",
@@ -245,27 +225,7 @@ df_g_all_to_soy <- df_g_all_to_soy %>%
     diffpct = round(((total_trans - lag(total_trans))/lag(total_trans))*100, 1)
   )
 
-# all classes to soybean for Brazil 
-df_g_all_to_soy <- df_g %>%
-  # optional filter
-  # filter(from_level_4 %in% names_from) %>% 
-  
-  group_by(year, to_level_4) %>%
-  na.omit() %>% 
-  summarize(total_trans = sum(ha)) %>% 
-  filter(to_level_4 == "Soy Beans") %>% 
-  filter(year %in% yr_range) %>%  
-  as.data.frame() #%>% 
-
-df_g_all_to_soy <- df_g_all_to_soy %>% 
-  arrange(year) %>% 
-  mutate(
-    # Difference = 2013 - 2012 per category
-    diff =  round(total_trans - lag(total_trans), 1),
-    # Pct Difference = ((2013-2012)/2012)*100 per category
-    diffpct = round(((total_trans - lag(total_trans))/lag(total_trans))*100, 1)
-  )
-
+# all classes to 
 
 # Add columnd that shows the difference from the previous interval
 df_g_specific_fromto <- df_g_specific_fromto %>% 
