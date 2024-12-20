@@ -79,7 +79,7 @@ df_br_top <- df_br %>%
   slice_head(n = 5) %>% 
   ungroup()
 
-## 3.1 Line Plots ------------------------
+# 2 Line Plots ------------------------
 
 df_top <- rbind(df_us_top, df_br_top)
 
@@ -112,6 +112,124 @@ ggsave(
   width = 10,
   height = 3.5
 )
+
+# 3: Difference Stats -----------
+
+## 3.1: Difference in Export Value --------
+
+### 3.1.1 BR --> World ---------
+e_v_brw <- df %>%
+  filter(ReporterDesc == "Brazil" & PartnerDesc == "World") #%>% 
+  #select(ReporterDesc, Period, annual_sum) 
+
+# Calc Differences from 2013 to 5-year average
+
+# get 2013
+e_v_brw_2013 <- e_v_brw %>% 
+  filter(Period == 2013) %>% 
+  select(Fobvalue) %>% 
+  as.numeric()
+
+# 5-Year Average
+e_v_brw_5yravg_20032012 <- e_v_brw %>% 
+  filter(Period < 2013 & Period >= 2008) %>% 
+  summarise(avg_prev5yr = mean(Fobvalue)) %>%
+  as.numeric()
+
+diff5_n_v_brw <- e_v_brw_2013 - e_v_brw_5yravg_20032012
+diff5_p_v_brw <- (diff5_n_v_brw/e_v_brw_5yravg_20032012) *100
+
+### 3.1.2 BR --> China ---------
+e_v_brc <- df_br %>%
+  filter(ReporterDesc == "Brazil" & PartnerDesc == "China") #%>% 
+#select(ReporterDesc, Period, annual_sum) 
+
+# Calc Differences from 2013 to 5-year average
+
+# get 2013
+e_v_brc_2013 <- e_v_brc %>% 
+  filter(Period == 2013) %>% 
+  select(Fobvalue) %>% 
+  as.numeric()
+
+# 5-Year Average
+e_v_brc_5yravg_20032012 <- e_v_brc %>% 
+  filter(Period < 2013 & Period >= 2008)  %>% 
+  summarise(avg_prev5yr = mean(Fobvalue)) %>%
+  as.numeric()
+
+diff5_n_v_brc <- e_v_brc_2013 - e_v_brc_5yravg_20032012
+diff5_p_v_brc <- (diff5_n_v_brc/e_v_brc_5yravg_20032012) *100
+
+## 3.2 Difference in Export Quantity ----------
+
+### 3.2.1 BR --> World ---------
+# Import CSV
+exports_usbr <-read.csv("../Data_Source/FAOSTAT_BrUS_2000_2020_ExportQuantity.csv")
+exports_usbr<- exports_usbr %>% 
+  select(Area, Year, Element, Value) %>% 
+  filter(Year >= 2003 & Year <= 2017)
+
+# Calc Differences from 2013 to 10-year average
+e_q_brw_10yravg_20032012 <- exports_usbr %>% 
+  filter(Year < 2013 & Year >= 2003 & Area == "Brazil") %>% 
+  summarise(avg_prev10yr = mean(Value)) %>%
+  as.numeric()
+
+e_q_brw_2013 <- exports_usbr %>% 
+  filter(Year == 2013 & Area == "Brazil") %>% 
+  select(Value) %>% 
+  as.numeric()
+
+diff10_n_q_brw <- e_q_brw_2013 - e_q_brw_10yravg_20032012
+diff10_p_q_brw <- (diff_n_q_brw/e_q_brw_10yravg_20032012) *100
+
+# 5-Year Average
+e_q_brw_5yravg_20032012 <- exports_usbr %>% 
+  filter(Year < 2013 & Year >= 2008 & Area == "Brazil") %>% 
+  summarise(avg_prev5yr = mean(Value)) %>%
+  as.numeric()
+
+diff5_n_q_brw <- e_q_brw_2013 - e_q_brw_5yravg_20032012
+diff5_p_q_brw <- (diff_n_q_brw/e_q_brw_5yravg_20032012) *100
+
+
+### 3.2.2 BR --> China ---------
+# Import CSV
+exports_br_to_china <-read.csv("../Data_Source/FAOSTAT_BRtoChina_ExportQuantity.csv")
+exports_br_to_china<- exports_br_to_china %>% 
+  select(Reporter.Countries, Partner.Countries, Year, Element, Value) %>% 
+  filter(Year >= 2003 & Year <= 2017) %>% 
+  filter(Partner.Countries== "China, mainland")
+
+# Calc Differences from 2013 to 10-year average
+e_q_brc_10yravg_20032012 <- exports_br_to_china %>% 
+  filter(Year < 2013 & Year >= 2003) %>% 
+  summarise(avg_prev10yr = mean(Value)) %>%
+  as.numeric()
+
+e_q_brc_2013 <- exports_br_to_china %>% 
+  filter(Year == 2013) %>% 
+  select(Value) %>% 
+  as.numeric()
+
+diff10_n_q_brc <- e_q_brc_2013 - e_q_brc_10yravg_20032012
+diff10_p_q_brc <- (diff_n_q_brc/e_q_brc_10yravg_20032012) *100
+
+# 5-Year Average
+e_q_brc_5yravg_20032012 <- exports_usbr %>% 
+  filter(Year < 2013 & Year >= 2008 & Area == "Brazil") %>% 
+  summarise(avg_prev5yr = mean(Value)) %>%
+  as.numeric()
+
+diff5_n_q_brc <- e_q_brc_2013 - e_q_brc_5yravg_20032012
+diff5_p_q_brc <- (diff_n_q_brc/e_q_brc_5yravg_20032012) *100
+
+# 4: In-Text ------
+# When compared to the previous 5-year averages, in the year following the 
+# US drought there was an increase in the quantity and value of soybean exports from 
+# Brazil to the rest of the world of 58% and 70% (respectively) and export quantity and value 
+# to China increased 66% and 71%.
 
 # GRAVEYARD -------------------
 
