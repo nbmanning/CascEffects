@@ -153,7 +153,7 @@ ggplot(df_g_specific_fromto, aes(x=years, y=total_trans/1000000, group = fromto,
   geom_line() +
   geom_point(fill = "white", size = 0.8) +
   xlab("")+
-  labs(title = paste("Cerrado Annual Land Transition"),
+  labs(title = paste("Cerrado Annual Land Conversion"),
        #subtitle = "Data Source: MapBiomas",
        #caption = "Dotted line shows the transitions from 2012 to 2013",
        y = "Land Change from Previous Year (Mha)",
