@@ -146,7 +146,6 @@ df_cerr_all_to_soy <- df_cerr %>%
   group_by(year, to_level_4) %>%
   na.omit() #%>% 
 
-
 # Run the function to see if it yields the same as doing it manually -- it does! 
 result_cerr_all <- F_calc_change_per_year(df_cerr_all_to_soy) 
 result_cerr_all <- result_cerr_all %>% mutate(desc = "Cerrado All-to-Soy")
@@ -465,10 +464,55 @@ result_br_fromto <- result_br_fromto %>% mutate(desc = "Brazil Specific From-To 
 
 
 # 4: Final Result ---------------
+# create final by combining all df's 
 result_final <- rbind(
   result_cerr_all, result_br_all_nocerr, result_br_all,
   result_cerr_fromto, result_br_fromto_nocerr, result_br_fromto
 )
+
+# create table for MS 
+write.csv(result_final, "../Figures/land_conversion_mapb.csv", row.names = F)
+
+# Format the table
+table_result <- result_final %>%
+  rename(
+    `From-To` = fromto,
+    `Total Land Conversion (2012-2013)` = total_trans_2013,
+    `Difference (1011/2012 - 2012/2013)` = diff_20122013,
+    `% Difference (1011/2012 - 2012/2013)` = diff_20122013_pct,
+    `Avg Previous 5-Year Conversions` = avg_prev5yr_trans,
+    `Difference (2012/2012 Compared to 5-Year Avg)` = diff_5yr,
+    `% Difference (2012/2012 Compared to 5-Year Avg)` = dff_5yr_pct,
+    Description = desc
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~ round(., 2)) # Round numeric columns to 2 decimal places
+  )
+
+# Save as a CSV
+write.csv(table_result, "../Figures/land_conversion_mapb_table.csv", row.names = FALSE)
+
+
+# 5: In-Text Statistics --------
+# Text: "But there could be a time lag here, as there is an increase in total soybean cover between 
+# 2012 and 2015 of 2.28 Mha (+17.8%), and between 
+# 2012 and 2017 of 4.48 Mha (+35.0%) (data from MapBiomas)"
+
+df_cerr_all_to_soy_years <- df_cerr_all_to_soy %>%
+  group_by(year, to_level_4) %>% 
+  # calculate sum of transition
+  summarize(total_trans = sum(ha)) %>% 
+  filter(year %in% yr_range) %>%  
+  as.data.frame()
+
+df_cerr_all_to_soy_years_diff <- df_cerr_all_to_soy_years %>% 
+  arrange(year) %>% 
+  mutate(
+    # Difference = 2013 - 2012 per category
+    diff =  round(total_trans - lag(total_trans), 1),
+    # Pct Difference = ((2013-2012)/2012)*100 per category
+    diffpct = round(((total_trans - lag(total_trans))/lag(total_trans))*100, 1)
+  )
 
 
 # GRAVEYARD -----------------------------------------------------------------------
