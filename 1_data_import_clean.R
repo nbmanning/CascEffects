@@ -343,11 +343,10 @@ price_US <- raw_price_US %>%
 # data comes in 60 kg / USD; take value*(100/6)*0.0272155 to get to USD/bu; *(100/6) gets to USD/1000kg
 
 getwd()
-#raw_price_BR <- read.csv("current/CEPEA_soybean_BR_1997_2021_annual_main.csv", skip = 3, dec = ",")
 raw_daily_price_BR <- read.csv("../Data_Source/CEPEA_Parana_BR_60kg_1997_2021_daily_raw.csv",
                                skip = 3)
-str(raw_daily_price_BR)
 
+# Clean daily price data and summarize to monthly to match US stats
 price_BR_daily <- raw_daily_price_BR %>% 
   select(c("Date", "Price_US.")) %>% 
   rename("date" = "Date",
@@ -378,8 +377,6 @@ raw_yield_US <- getQuickstat(
   data_item = "SOYBEANS - YIELD, MEASURED IN BU / ACRE",
   commodity = "SOYBEANS",
   geographic_level = "NATIONAL",
-  # state = c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
-  #           "IOWA", "MINNESOTA", "WISCONSIN", "ILLINOIS", "INDIANA", "OHIO", "MICHIGAN"),
   year = paste(year_range),
   geometry = F)  
 
@@ -430,7 +427,7 @@ df_yield_USBR <- df_yield_USBR %>%
 
 ## 4.4: US yield (US-MW States) -----
 
-## DATA SOURCE: USDA QuickStats, accessed through tidyUSDA R Package ()
+## DATA SOURCE: USDA QuickStats, accessed through tidyUSDA R Package
 
 ### NOTE: yield comes in bushels but we convert to metric tons
 
