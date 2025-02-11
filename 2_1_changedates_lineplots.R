@@ -12,7 +12,7 @@
 # Stat = 2012, Brazil HMY = 2011-2012, USA HMY = 2012-2013) 
 
 # Created: Feb 2024
-# Last Updated: December 2024
+# Last Updated: Jan 2025
 
 # Working Notes:
 ## 3/4/24: Currently working to remove the duplicate legends and clean the 
@@ -77,6 +77,20 @@ F_add_marketyear <- function(df, year_col, area_col){
 #load("../Data_Derived/prod_price_yield_exports.RData")
 load("../Data_Derived/prod_price_area_yield_exports.RData")
 
+theme_text_sizes <- theme(
+  # Set size and style for the title
+  plot.title = element_text(size = 16),  
+  
+  # Set size for x-axis text
+  axis.title.x = element_text(size = 12),
+  axis.text.x = element_text(size = 12),  
+  
+  # Set size for y-axis text
+  axis.title.y = element_text(size = 12),
+  axis.text.y = element_text(size = 12)  
+  #plot.title = element_text(size = 16, face = "bold", hjust = 0.5)  # Set size and style for the title
+  ) 
+
 ## 1.0 : Create Plotting Function --------
 F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axis_title){
   # set plot parameters as inputs from the fxn
@@ -101,6 +115,7 @@ F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axi
       x = "",
       y = y_axis_title)+   
     # adjust theme to turn labels vertical and remove legend for plotting fxn
+    
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8),
           legend.position = "none")
 }
@@ -159,7 +174,8 @@ y_limits <- range(y_lower, y_upper)
     x = "",
     y = "Production (mt)"
   )+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
+  
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
         # keep legend on one plot for the final graph
         #legend.position = "none"
   )
@@ -204,6 +220,7 @@ y_limits <- range(y_lower, y_upper)
       x = "",
       y = "Production (mt)"
     )+
+   
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
           # keep legend on one plot for the final graph
           #legend.position = "none"
@@ -425,6 +442,7 @@ df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
       x = "",
       y = "Area (ha)"
     )+
+    
     theme(legend.position="none")+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
           # keep legend on one plot for the final graph
@@ -458,6 +476,7 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
       x = "",
       y = "Area (ha)"
     )+
+    
     theme(legend.position="none")+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
           # keep legend on one plot for the final graph
@@ -499,6 +518,7 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
      x = "",
      y = "Soybean Price (USD)"
    )+
+   
    theme(legend.position="none")+
    theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
  
@@ -530,6 +550,7 @@ df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>%
       x = "",
       y = "Land Conversion (Mha)"
     )+
+    
     theme(legend.position="none")+    
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
 
@@ -562,6 +583,7 @@ df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr
       x = "",
       y = "Land Conversion (Mha)"
     )+
+    
     theme(legend.position="none")+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
 )
@@ -583,6 +605,7 @@ df_trans_deforest <- read.csv("../Data_Source/Terrabrasilis_CerradoDeforestation
       x = "",
       y = "Deforestation (km^2)"
     )+
+    
     theme(legend.position="none")+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
 )
@@ -603,6 +626,7 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
       x = "",
       y = "Deforestation (km^2)"
     )+
+    
     theme(legend.position="none")+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
 )
@@ -646,20 +670,40 @@ combined_plot <- cowplot::plot_grid(
   rel_heights = c(1, 1, 0.1)
 )
 
+theme_text_sizes <- theme(
+  # Set size and style for the title
+  plot.title = element_text(size = 18),
+  plot.subtitle = element_text(size = 15),
+  
+  # Set size for x-axis text
+  # axis.title.x = element_text(size = 12),
+  axis.text.x = element_text(size = 13),  
+  
+  # Set size for y-axis text
+  axis.title.y = element_text(size = 14),
+  axis.text.y = element_text(size = 14),  
+  #plot.title = element_text(size = 16, face = "bold", hjust = 0.5)  # Set size and style for the title
+  
+  # set legend size
+  legend.text = element_text(size = 15),
+  legend.title = element_text(size = 15)
+) 
 
 p2 <- p1 +
   #guides(colour = "none") &
   plot_layout(nrow = 4, guides = "collect") & 
-  theme(legend.position = 'bottom') & 
-  theme(legend.text = element_text(size = 15)) & 
-  theme(legend.title = element_text(size = 15))
+  #theme(legend.position = 'bottom') &
+  theme(legend.position = 'none') &
+  theme_text_sizes 
 
-p2 <- p2 + plot_annotation(tag_levels = 'A')
+p2 <- p2 + 
+  plot_annotation(tag_levels = 'A') +     
+  theme(plot.tag = element_text(size = 18))
 
 p2
 
-ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v3.png",
-       p2, height = 15, width = 18, 
+ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v4.png",
+       p2, height = 16, width = 20, 
        dpi = 300)  
 
 
