@@ -38,25 +38,23 @@ micro_codes_cerr <- micro_codes_cerr$x
 BRCerr_abbvs <- filter(BR_abbvs, biome == "Cerrado")
 BRCerr_state_abbvs <- BRCerr_abbvs$state
 
-# 1: Production (mt) ---------------
+usda_key <- "34BD2DD3-9049-37A1-BC2C-D8A967E25E42"
 
-## 1.0: (Maybe replace production with yield for the future?? Maybe do corn as well?) ----
+# 1: Production (mt) ---------------
 
 ## 1.1: US Prod (US-MW States) -----
 
-## DATA SOURCE: USDA QuickStats, accessed through tidyUSDA R Package ()
+## DATA SOURCE: USDA QuickStats, accessed through tidyUSDA R Package (Lindblad, 2023)
 
 ### NOTE: prod comes in bushels but we convert to metric tons
 
 # get raw Production data
 raw_prod_USMW <- getQuickstat(
-  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  key = usda_key,
   program = "SURVEY",
   data_item = "SOYBEANS - PRODUCTION, MEASURED IN BU",
   commodity = "SOYBEANS",
   geographic_level = "STATE",
-  # state = c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
-  #           "IOWA", "MINNESOTA", "WISCONSIN", "ILLINOIS", "INDIANA", "OHIO", "MICHIGAN"),
   year = paste(year_range),
   geometry = F)  
 
@@ -85,79 +83,6 @@ prod_USMW <- prod_USMW_states %>%
   dplyr::summarize(prod = round(sum(prod), digits = 2)) %>% 
   mutate(description = "US-MW States")
 
-
-## 1.2 BR Prod (Cerrado States) --------
-
-# # get state-level data so we can merge to only those states within the extent of the Cerrado
-# raw_sidra <- get_sidra(x = 1612, 
-#                        variable =  c(214, 109), # production and yield # or for first six (excluding value of production) c(109, 1000109, 216, 1000216,214, 112) 
-#                        period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
-#                        geo = "State", # Brazil, State, or Município
-#                        geo.filter = NULL,
-#                        #geo.filter = list("State" = c(11, 12)), #NULL,
-#                        classific = "c81",
-#                        category = list(2713), # Soja (em grão)
-#                        header = T,
-#                        format = 3)
-# 
-# # raw_sidra_meso <- get_sidra(x = 1612, 
-# #                        variable =  c(214, 109), # production and yield # or for first six (excluding value of production) c(109, 1000109, 216, 1000216,214, 112) 
-# #                        period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
-# #                        geo = "MesoRegion", # Brazil, State, or Município
-# #                        geo.filter = NULL,
-# #                        classific = "c81",
-# #                        category = list(2713), # Soja (em grão)
-# #                        header = T,
-# #                        format = 3)
-# 
-# raw_sidra_micro <- get_sidra(x = 1612, 
-#                        variable =  c(214, 109), # production and yield # or for first six (excluding value of production) c(109, 1000109, 216, 1000216,214, 112) 
-#                        period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
-#                        geo = "MicroRegion", # Brazil, State, or Município
-#                        geo.filter = NULL,
-#                        classific = "c81",
-#                        category = list(2713), # Soja (em grão)
-#                        header = T,
-#                        format = 3)
-# # colnames(raw_sidra)
-# 
-# # clean and translate columns
-# prod_BR <- raw_sidra %>% 
-#   select("Unidade da Federação (Código)", "Unidade da Federação", "Ano", "Variável", "Valor") %>% 
-#   rename(
-#     "state_code" = "Unidade da Federação (Código)",
-#     "state_name" = "Unidade da Federação",
-#     "yr" = "Ano",
-#     "variable" = "Variável",
-#     "value" = "Valor") %>%  
-#   mutate(variable = str_replace(variable, "Quantidade produzida", "prod"),
-#          #variable = str_replace(variable, "Rendimento médio da produção", "yield"
-#          variable = str_replace(variable, "Área plantada", "ha_planted"),
-#          yr = as.double(yr)) %>% 
-#   select(.,c("yr", "variable", "value", "state_name", "state_code"))
-# 
-# # left-join w states
-# prod_BR <- left_join(prod_BR, BR_abbvs)
-# prod_BRCerr_states <- filter(prod_BR, state %in% BRCerr_state_abbvs)
-# 
-# ### TO-DO: Filter prod_BR microregions by the list generated in Code 0 to get Production by MicroRegion
-# 
-# # make data wide to match US data and make it easier to merge
-# prod_BRCerr_states <- pivot_wider(prod_BRCerr_states, names_from = "variable")
-# 
-# 
-# # add country and filter to the same variables as US
-# prod_BRCerr_states <- prod_BRCerr_states %>% 
-#   mutate(country = "Brazil") %>% 
-#   select(yr, state, prod, country)
-# 
-# # summarize to regional level
-# prod_BRCerr <- prod_BRCerr_states %>% 
-#   na.omit() %>% 
-#   group_by(yr) %>%
-#   dplyr::summarize(prod = round(sum(prod), digits = 2)) %>% 
-#   mutate(description = "States with Cerrrado",
-#          country = "Brazil")
 
 ## 1.2: BR Prod (Cerrado Microregions) ------------------
 # NEW: attempt to edit micro region to be the same as state
@@ -230,7 +155,7 @@ prod_BR <- raw_sidra_BR %>%
 ### 1.4.2: US Prod ------
 # download
 raw_prod_US <- getQuickstat(
-  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  key = usda_key,
   program = "SURVEY",
   data_item = "SOYBEANS - PRODUCTION, MEASURED IN BU",
   commodity = "SOYBEANS",
@@ -319,7 +244,7 @@ df_exports_USBR_china <- df_exports_USBR_china %>%
 
 # get raw data from QuickStats
 raw_price_USMWst <- getQuickstat(
-  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  key = usda_key,
   program = "SURVEY",
   data_item = "SOYBEANS - PRICE RECEIVED, MEASURED IN $ / BU",
   commodity = "SOYBEANS",
@@ -359,7 +284,7 @@ price_USMW <- price_USMW_states %>%
 ### 3.1.2: US (National) Price -------
 
 raw_price_US <- getQuickstat(
-  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  key = usda_key,
   program = "SURVEY",
   data_item = "SOYBEANS - PRICE RECEIVED, MEASURED IN $ / BU",
   commodity = "SOYBEANS",
@@ -438,7 +363,7 @@ df_price_USMW_BRCerr <- df_price_USMW_BRCerr %>%
 
 ## 4.1 US Yield --------
 raw_yield_US <- getQuickstat(
-  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  key = usda_key,
   program = "SURVEY",
   data_item = "SOYBEANS - YIELD, MEASURED IN BU / ACRE",
   commodity = "SOYBEANS",
@@ -501,7 +426,7 @@ df_yield_USBR <- df_yield_USBR %>%
 
 # get raw yielduction data
 raw_yield_USMW <- getQuickstat(
-  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  key = usda_key,
   program = "SURVEY",
   data_item = "SOYBEANS - YIELD, MEASURED IN BU / ACRE",
   commodity = "SOYBEANS",
@@ -647,7 +572,7 @@ df_yield_USMW_BRCerr <- df_yield_USMW_BRCerr %>%
 ## 5.1: US-MW Area Planted ----------
 # get raw data from QuickStats
 area_p_USMWst <- getQuickstat(
-  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  key = usda_key,
   program = "SURVEY",
   data_item = "SOYBEANS - ACRES PLANTED",
   commodity = "SOYBEANS",
@@ -810,7 +735,7 @@ area_h_BRCerr_micro <- area_BRCerr_micro %>%
 ## 5.3: US-MW Area Harvested ----------
 # get raw data from QuickStats
 area_h_USMWst <- getQuickstat(
-  key = "34BD2DD3-9049-37A1-BC2C-D8A967E25E42",
+  key = usda_key,
   program = "SURVEY",
   data_item = "SOYBEANS - ACRES HARVESTED",
   commodity = "SOYBEANS",
