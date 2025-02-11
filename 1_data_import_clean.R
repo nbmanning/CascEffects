@@ -739,35 +739,29 @@ trans_tosoy_BR <- trans_tosoy_BR %>%
          "to_level_0", "to_level_1", "to_level_2", "to_level_3", "to_level_4",      
          "value")
 
-## 6.2: Aggregate to_level_4 values
+## 6.2: Aggregate to_level_4 values -------
 
 # aggregate to yearly transition values by combining all FROM classes per municip per year
 trans_tosoy_BRmunicip_agg <- aggregate(value ~ municipality_code + municipality + state + end_year + to_level_4, trans_tosoy_BR, sum)
 
 trans_tosoy_BRmunicip_agg <- trans_tosoy_BRmunicip_agg %>% 
-  filter(end_year >= 2000 & end_year <= 2020) %>% # UGHHHHH ONLY up to 2019!!!!!!!! 
+  filter(end_year >= 2000 & end_year <= 2020) %>% 
   rename(
     "yr" = "end_year",
     "trans" = "value") %>%
   select(., c("yr","state", "municipality", "municipality_code", "trans")) %>% 
   mutate(country = "Brazil")
 
-#R_trans_tosoy_BRmunicip <- df_trans_tosoy_BR
+# keep municip data
 trans_tosoy <- trans_tosoy_BRmunicip_agg
-
-## (OMIT) 4.X: set cleaned trans_tosoy data 
-#load(file = "../Data_Source/trans_BRmunicip_year.R")
-#trans_tosoy <- R_trans_BRmunicip
 
 
 ## 6.3: load municipality shapefile and Cerrado shapefile and intersect -----
 
-### 6.3.1: Load municipality shapefile
+### 6.3.1: Load municipality shapefile ------
 
 # Read all municipalities in the country at a given year
-# to-do: change to shp_br_muni
 shp_muni <- read_municipality(code_muni="all", year=2018)
-# plot(shp_muni)
 
 ### 6.3.2: Load Cerrado shapefile ----
 shp_br_cerr <- read_biomes(
@@ -782,11 +776,12 @@ str(shp_muni)
 
 # get municipalities that are at all within the Cerrado
 shp_muni_in_cerr <- st_intersection(shp_muni, shp_br_cerr)
-plot(shp_muni_in_cerr)
-
-shp_code_muni <- shp_muni_in_cerr %>% select(code_muni, geom)
 
 ### 6.3.4: get territory codes for municipalities in intersection -----
+# get shp of intersecting municipalities
+shp_code_muni <- shp_muni_in_cerr %>% select(code_muni, geom)
+
+# get only codes of intersecting
 muni_codes_cerr <- shp_muni_in_cerr$code_muni
 
 ### 6.3.5: filter to just the territories (municipalities) within the Cerrado 
@@ -808,11 +803,6 @@ df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>% filter(yr >= 2007
 
 ## 7.0: Set Constants -------
 # Set the transition variables to keep 
-# list_lvl4_classes <- c("Savanna Formation", "Grassland", "Pasture", "Soy Beans", 
-#                         "Other Temporary Crops", "Mosaic of Agriculture and Pasture",
-#                         "Sugar Cane", "Other Non Vegetated Area", "Coffe",
-#                         "Other Non Forest Natural Formation", "Citrus", "Rice")
-
 list_lvl4_classes <- c("Soy Beans", "Pasture",
                        "Other Temporary Crops", "Mosaic of Agriculture and Pasture",
                        "Sugar Cane", "Other Non Vegetated Area", "Coffe",
@@ -866,31 +856,18 @@ trans_toclasses_cerrmuni <- trans_toclasses %>%
 df_trans_to_classes_BRCerr_muni <- trans_toclasses_cerrmuni %>% 
   aggregate(trans ~ yr, ., sum) %>%
   mutate(country = "Brazil")
+
 df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr >= 2007 & yr <= 2017)
 
 # 8: Export all df's to use in next script -----
 
 # Export Production, Price, Area, and Exports
-# save(df_prod_USMW_BRCerr, df_prod_USBR,
-#      df_price_USMW_BRCerr, 
-#      df_exports_USBR_china, df_exports_USBR_world, 
-#      df_yield_USBR, df_yield_USMW_BRCerr,
-#      file = "../Data_Derived/prod_price_yield_exports.RData")
-
 save(df_prod_USMW_BRCerr, df_prod_USBR,
      df_price_USMW_BRCerr,
      df_area_h_USMW_BRCerr, df_area_p_USMW_BRCerr,
      df_exports_USBR_china, df_exports_USBR_world, 
      df_yield_USBR, df_yield_USMW_BRCerr,
      file = "../Data_Derived/prod_price_area_yield_exports.RData")
-
-save(df_prod_USMW_BRCerr, df_prod_USBR,
-     df_price_USMW_BRCerr, 
-     df_exports_USBR_china, df_exports_USBR_world, 
-     df_yield_USBR, df_yield_USMW_BRCerr,
-     file = "../Data_Derived/prod_price_yield_exports.RData")
-
-#load("../Data_Derived/prod_price_exports.RData")
 
 # Export Land Change
 save(df_trans_to_soy_BRCerr_muni,
