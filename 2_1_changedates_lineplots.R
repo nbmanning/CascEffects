@@ -22,27 +22,7 @@
 
 rm(list = ls())
 getwd()
-### 11/14 Check spaces for legend test ###
 
-check_column_spaces <- function(data) {
-  # Check if one of the columns exists
-  target_columns <- c("ReporterDesc", "country")
-  existing_column <- intersect(target_columns, colnames(data))
-  
-  if (length(existing_column) == 0) {
-    stop("Neither 'ReporterDesc' nor 'country' column is present in the data.")
-  }
-  
-  # Check for extra spaces in the column
-  col_to_check <- existing_column[1]  # Use the first found column
-  has_extra_spaces <- any(grepl("^\\s|\\s$|\\s{2,}", data[[col_to_check]]))
-  
-  # Print TRUE if extra spaces are found, otherwise FALSE
-  print(has_extra_spaces)
-}
-
-###
- 
 # 0: Load Libraries & Set Constants ------
 library(tidyverse)
 library(stringr)
@@ -54,7 +34,6 @@ col_US = "salmon"
 col_BR = "cornflowerblue"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
 
 # create function that adds a market year column 
 ## NOTE: the {{}} is used to dynamically refer to the column specified by user rather than having it as a character
@@ -74,7 +53,6 @@ F_add_marketyear <- function(df, year_col, area_col){
 
 # 1: Plot Line Plots -----
 
-#load("../Data_Derived/prod_price_yield_exports.RData")
 load("../Data_Derived/prod_price_area_yield_exports.RData")
 
 theme_text_sizes <- theme(
@@ -132,25 +110,15 @@ F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axi
 
 ### 1.1.1: Regional (US-MW & Cerrado) -----
 # add Harvest + Market Year Variable
-# df2_prod_USMW_BRCerr <- df_prod_USMW_BRCerr %>% 
-#   # create new column
-#   mutate(harvest_marketyr = paste0(as.character(yr), "-", as.character(yr+1))) %>% 
-#   # if country == BR, then harvest_yr equals the previous year
-#   mutate(harvest_marketyr = case_when(
-#     country == "Brazil" ~  paste0(as.character(yr-1), "-", as.character(yr)),
-#     TRUE ~ harvest_marketyr
-#   ))
-
 df2_prod_USMW_BRCerr <- F_add_marketyear(df_prod_USMW_BRCerr, yr, country)
 df2_prod_USBR <- F_add_marketyear(df_prod_USBR, yr, country)
 
 
-#y_limits <- range(df2_prod_USBR$prod)
 y_upper <- max(df2_prod_USBR$prod)
 y_lower <- min(df2_prod_USMW_BRCerr$prod)
 y_limits <- range(y_lower, y_upper)
 
-# plot - DONE
+# plot 
 (p_prod_regional <- 
     ggplot(df2_prod_USMW_BRCerr, aes(x=harvest_marketyr, y=prod, color = country, group = country)) +
     geom_point() +
@@ -187,16 +155,6 @@ y_limits <- range(y_lower, y_upper)
 ### 1.1.2: National (US & BR) ----------
 
 # Plotted manually so we can compare axes more easily
-
-# plot - DONE
-# (p_prod_national <- F_plot_harvestMY(
-#   df = df2_prod_USBR, 
-#   x_var = harvest_marketyr, y_var = prod, group_var = country,
-#   title = "Annual National Soybean Production",
-#   subtitle = "Data Sources: USDA-NASS & SIDRA",
-#   y_axis_title = "Production (mt)"
-# )) 
-
 (p_prod_national <- 
     ggplot(df2_prod_USBR, aes(x=harvest_marketyr, y=prod, color = country, group = country)) +
     geom_point() +
@@ -244,31 +202,12 @@ df2_exports_USBR_china <- F_add_marketyear(df_exports_USBR_china, Period, Report
   y_axis_title = "Export Value (USD)"
 ))
 
-# (p_exportvalue_usbr_tochina <- 
-#    ggplot(df2_exports_USBR_china, aes(x=harvest_marketyr, y=PrimaryValue, color = ReporterDesc, group = ReporterDesc)) +
-#    geom_line() + 
-#    geom_point() +
-#    geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype="dashed", linewidth=0.5)+
-#    theme_bw()+
-#    scale_color_manual(
-#      name = "Country",
-#      values = c(
-#        US = col_US,
-#        Brazil = col_BR),
-#      breaks = c("US", "Brazil"))+
-#    labs(
-#      title = "Annual Soybean Export Value to China",
-#      subtitle = "Data Source: UN Comtrade",
-#      x = "",
-#      y = "Export Value (USD)"
-#    )+theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
-# )
 
 ### 1.2.1: Export Value (US/BR --> World) --------
 # add Harvest + Market Year Variable
 df2_exports_USBR_world <- F_add_marketyear(df_exports_USBR_world, Period, ReporterDesc)
 
-# plot - DONE
+# plot
 (p_exportvalue_usbr_toworld <- F_plot_harvestMY(
   df = df2_exports_USBR_world, 
   x_var = harvest_marketyr, y_var = PrimaryValue, group_var = ReporterDesc,
@@ -276,27 +215,6 @@ df2_exports_USBR_world <- F_add_marketyear(df_exports_USBR_world, Period, Report
   subtitle = "Data Sources: UN Comtrade",
   y_axis_title = "Export Value (USD)"
 ))
-
-# (p_exportvalue_usbr_toworld <- 
-#     ggplot(df2_exports_USBR_world, aes(x=harvest_marketyr, y=PrimaryValue, color = ReporterDesc, group = ReporterDesc)) +
-#     geom_line() + 
-#     geom_point() +
-#     geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype="dashed", linewidth=0.5)+
-#     theme_bw()+
-#     scale_color_manual(
-#       name = "Country",
-#       values = c(
-#         US = col_US,
-#         Brazil = col_BR),
-#       breaks = c("US", "Brazil"))+
-#     labs(
-#       title = "Annual Soybean Export Value to World",
-#       subtitle = "Data Source: UN Comtrade",
-#       x = "",
-#       y = "Export Value (USD)"
-#     )+
-#     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
-# )
 
 
 ### 1.2.2: Export Quantity (World) -------
@@ -320,26 +238,6 @@ exports2_usbr <- F_add_marketyear(exports_usbr, Year, Area)
   y_axis_title = "Quantity (kg)"
 ))
 
-# (p_exportqty_usbr_toworld <- 
-#     ggplot(exports2_usbr, aes(x=harvest_marketyr, y=Value, color = Area, group = Area)) +
-#     geom_line() + 
-#     geom_point() +
-#     geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype="dashed", linewidth=0.5)+
-#     theme_bw()+
-#     scale_color_manual(
-#       name = "Country",
-#       values = c(
-#         US = col_US,
-#         Brazil = col_BR),
-#       breaks = c("US", "Brazil"))+
-#     labs(
-#       title = "Annual Soybean Export Quantity to World",
-#       subtitle = "Data Source: UN Comtrade",
-#       x = "",
-#       y = "Quantity (kg)"
-#     )+
-#     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
-# )
 
 ## 1.3: Yield -------
 
@@ -355,28 +253,6 @@ df2_yield_USBR <- F_add_marketyear(df_yield_USBR, yr, country)
   y_axis_title = "Soybean Yield (kg/ha)"
 ))
 
-# (p_yield_usbr<-
-#     ggplot(df2_yield_USBR, aes(x=harvest_marketyr, y=yield, color = country, group = country)) +
-#     geom_line() + 
-#     geom_point() +  
-#     geom_vline(aes(xintercept = "2012-2013"), color = "red",linetype="dashed", linewidth=0.5, alpha = 0.5)+
-#     theme_bw()+
-#     scale_color_manual(
-#       name = "Country",
-#       values = c(
-#         US = col_US,
-#         Brazil = col_BR),
-#       breaks = c("US", "Brazil"))+
-#     labs(
-#       title = "Annual National Soybean Yield",
-#       subtitle = "Data Sources: USDA-NASS & SIDRA",
-#       x = "",
-#       y = "Soybean Yield (kg/ha)"
-#     )+    
-#     theme(axis.text.x = element_text(angle = 90, vjust = 0.8),
-#           legend.position = "none")
-#   
-# )
 
 ### 1.3.2 Regional Yield ------
 df2_yield_USMW_BRCerr <- F_add_marketyear(df_yield_USMW_BRCerr, yr, country)
@@ -390,36 +266,15 @@ df2_yield_USMW_BRCerr <- F_add_marketyear(df_yield_USMW_BRCerr, yr, country)
   y_axis_title = "Soybean Yield (kg/ha)"
 ))
 
-# (p_yield_usmwbrcerr<-
-#     ggplot(df2_yield_USMW_BRCerr, aes(x=harvest_marketyr, y=yield, color = country, group = country)) +
-#     geom_line() + 
-#     geom_point() +  
-#     geom_vline(aes(xintercept = "2012-2013"), color = "red",linetype="dashed", linewidth=0.5, alpha = 0.5)+
-#     theme_bw()+
-#     scale_color_manual(
-#       name = "Country",
-#       values = c(
-#         US = col_US,
-#         Brazil = col_BR),
-#       breaks = c("US", "Brazil"))+
-#     labs(
-#       title = "Annual Regional Soybean Yield",
-#       subtitle = "Data Sources: USDA-NASS & SIDRA",
-#       x = "",
-#       y = "Soybean Yield (kg/ha)"
-#     )+    
-#     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
-#   
-# )
-
 
 ## 1.4: Area (Regional) ------------
 
 ### 1.4.1 Area Harvested ---------
 
+# add Market Year
 df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
 
-# plot - DONE
+# plot
 (p_area_h_regional <- 
     ggplot(df2_area_h_USMW_BRCerr, aes(x=harvest_marketyr, y=area_harvested, color = country, group = country)) +
     geom_point() +
@@ -432,8 +287,7 @@ df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
       values = c(
         US = col_US,
         Brazil = col_BR),
-      breaks = c("US", "Brazil"),
-      #labels = c("US-MW", "Cerrado")
+      breaks = c("US", "Brazil")
     )+
     scale_x_discrete()+
     labs(
@@ -444,16 +298,14 @@ df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
     )+
     
     theme(legend.position="none")+
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
-          # keep legend on one plot for the final graph
-          #legend.position = "none"
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)
     )
 )
 
 ### 1.4.2 Area Planted -----------
 df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
 
-# plot - DONE
+# plot
 (p_area_p_regional <- 
     ggplot(df2_area_p_USMW_BRCerr, aes(x=harvest_marketyr, y=area_planted, color = country, group = country)) +
     geom_point() +
@@ -466,8 +318,7 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
       values = c(
         US = col_US,
         Brazil = col_BR),
-      breaks = c("US", "Brazil"),
-      #labels = c("US-MW", "Cerrado")
+      breaks = c("US", "Brazil")
     )+
     scale_x_discrete()+
     labs(
@@ -478,9 +329,7 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
     )+
     
     theme(legend.position="none")+
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
-          # keep legend on one plot for the final graph
-          #legend.position = "none"
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)
     )
 )
 
@@ -637,7 +486,7 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 # 3: Arrange Plots ------------
 library(patchwork)
 
-
+# option to add other stats here
 p1 <- 
   p_prod_regional +
   p_prod_national +
@@ -676,21 +525,18 @@ theme_text_sizes <- theme(
   plot.subtitle = element_text(size = 15),
   
   # Set size for x-axis text
-  # axis.title.x = element_text(size = 12),
   axis.text.x = element_text(size = 13),  
   
   # Set size for y-axis text
   axis.title.y = element_text(size = 14),
   axis.text.y = element_text(size = 14),  
-  #plot.title = element_text(size = 16, face = "bold", hjust = 0.5)  # Set size and style for the title
-  
-  # set legend size
+
+  # Set legend size
   legend.text = element_text(size = 15),
   legend.title = element_text(size = 15)
 ) 
 
 p2 <- p1 +
-  #guides(colour = "none") &
   plot_layout(nrow = 4, guides = "collect") & 
   #theme(legend.position = 'bottom') &
   theme(legend.position = 'none') &
@@ -705,20 +551,3 @@ p2
 ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v4.png",
        p2, height = 16, width = 20, 
        dpi = 300)  
-
-
-# 4: Calculate Stats -----
-
-# hard code - no fxn
-
-## Planted Area ##
-
-
-## Production ##
-
-
-## Price ## 
-
-
-## Savannah to Soybean ##
-
