@@ -267,7 +267,7 @@ ggsave(filename = "../Figures/USMW_CountyDiffs/USMW_Change_Soy_nolegend.png",
        dpi = 300)  
 
 
-# 3: Plot Price for SI--------
+# 3: SI Plot: Change in  Price --------
 # set year range 
 year_range <- 2011:2012
 
