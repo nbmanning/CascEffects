@@ -1,4 +1,4 @@
-# Title: 2_4_figure_USBR_ExchangeRate.R
+# Title: 2_4_SI_figure_USBR_ExchangeRate.R
 # Author: Nick Manning
 # Purpose: Plot US (USD) and Brazil (BR Real) Exchange Rate over time
 # Creation Date: 10/18/23
