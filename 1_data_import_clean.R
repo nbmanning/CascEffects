@@ -85,30 +85,44 @@ prod_USMW <- prod_USMW_states %>%
 
 
 ## 1.2: BR Prod (Cerrado Microregions) ------------------
-# NEW: attempt to edit micro region to be the same as state
-prod_BR2 <- raw_sidra_micro %>% 
+raw_sidra_micro <- get_sidra(x = 1612,
+                       variable =  c(214, 109), # production and yield # or for first six (excluding value of production) c(109, 1000109, 216, 1000216,214, 112)
+                       period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
+                       geo = "MicroRegion", # Brazil, State, or Município
+                       geo.filter = NULL,
+                       classific = "c81",
+                       category = list(2713), # Soja (em grão)
+                       header = T,
+                       format = 3)
+
+# colnames(raw_sidra)
+prod_BRCerr <- raw_sidra_micro %>% 
+  # select MicroReg Code, MicroReg Name, Year, Variable, Value
   select("Microrregião Geográfica (Código)", "Microrregião Geográfica", "Ano", "Variável", "Valor") %>% 
+  
+  # translate by renaming
   rename(
     "code_micro" = "Microrregião Geográfica (Código)",
     "name_micro_long" = "Microrregião Geográfica",
     "yr" = "Ano",
     "variable" = "Variável",
     "value" = "Valor") %>%  
+  # translate by renaming 
   mutate(variable = str_replace(variable, "Quantidade produzida", "prod"),
          #variable = str_replace(variable, "Rendimento médio da produção", "yield"
          variable = str_replace(variable, "Área plantada", "ha_planted"),
          yr = as.double(yr)) %>% 
   select(.,c("yr", "variable", "value", "name_micro_long", "code_micro"))
 
-prod_BR2$code_micro <- as.double(prod_BR2$code_micro)
+prod_BRCerr$code_micro <- as.double(prod_BRCerr$code_micro)
 
-prod_BR2 <- left_join(prod_BR2, micro_codes_names_cerr)
+# add names of microregions only in the Cerrado to filter
+prod_BRCerr <- left_join(prod_BRCerr, micro_codes_names_cerr)
 
-prod_BRCerr_micro <- filter(prod_BR2, code_micro %in% micro_codes_cerr)
+prod_BRCerr_micro <- filter(prod_BRCerr, code_micro %in% micro_codes_cerr)
 
 # make data wide to match US data and make it easier to merge
 prod_BRCerr_micro <- pivot_wider(prod_BRCerr_micro, names_from = "variable")
-
 
 # add country and filter to the same variables as US
 prod_BRCerr_micro <- prod_BRCerr_micro %>% 
@@ -124,9 +138,7 @@ prod_BRCerr_micro <- prod_BRCerr_micro %>%
          country = "Brazil")
 
 ## 1.3: Get Prod (USMW & BRCerr) ----
-### CHANGED HERE: micro regions instead of states ###
 df_prod_USMW_BRCerr <- rbind(prod_BRCerr_micro, prod_USMW)
-#df_prod_USMW_BRCerr <- rbind(prod_BRCerr, prod_USMW)
 
 df_prod_USMW_BRCerr <- df_prod_USMW_BRCerr  %>% 
   filter(yr >= 2007 & yr <= 2017)
@@ -143,6 +155,7 @@ raw_sidra_BR <- get_sidra(x = 1612,
                        header = T,
                        format = 3)
 
+# clean SIDRA prod. stats
 prod_BR <- raw_sidra_BR %>% 
   select("Nível Territorial", "Ano", "Valor") %>% 
   rename(
@@ -150,7 +163,6 @@ prod_BR <- raw_sidra_BR %>%
     "yr" = "Ano",    
     "prod" = "Valor") %>% 
   mutate(yr = as.double(yr))
-
 
 ### 1.4.2: US Prod ------
 # download
@@ -160,8 +172,6 @@ raw_prod_US <- getQuickstat(
   data_item = "SOYBEANS - PRODUCTION, MEASURED IN BU",
   commodity = "SOYBEANS",
   geographic_level = "NATIONAL",
-  # state = c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
-  #           "IOWA", "MINNESOTA", "WISCONSIN", "ILLINOIS", "INDIANA", "OHIO", "MICHIGAN"),
   year = paste(year_range),
     geometry = F)  
 
