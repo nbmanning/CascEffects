@@ -465,58 +465,7 @@ yield_USMW <- yield_USMW_states %>%
   dplyr::summarize(yield = round(mean(yield), digits = 2)) %>% 
   mutate(description = "US-MW States")
 
-
-## 4.5 BR yield (Cerrado States) --------
-
-# # get state-level data so we can merge to only those states within the extent of the Cerrado
-# raw_yield_BR_states <- get_sidra(x = 1612, 
-#                        variable =  c(112), # yielduction and yield # or for first six (excluding value of yielduction) c(109, 1000109, 216, 1000216,214, 112) 
-#                        period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
-#                        geo = "State", # Brazil, State, or Município
-#                        geo.filter = NULL,
-#                        classific = "c81",
-#                        category = list(2713), # Soja (em grão)
-#                        header = T,
-#                        format = 3)
-# 
-# # colnames(raw_sidra)
-# 
-# # clean and translate columns
-# yield_BRCerr_states <- raw_yield_BR_states %>% 
-#   select("Unidade da Federação (Código)", "Unidade da Federação", "Ano", "Variável", "Valor") %>% 
-#   rename(
-#     "state_code" = "Unidade da Federação (Código)",
-#     "state_name" = "Unidade da Federação",
-#     "yr" = "Ano",
-#     "variable" = "Variável",
-#     "value" = "Valor") %>%  
-#   mutate(
-#     #variable = str_replace(variable, "Quantidade produzida", "prod"),
-#     variable = str_replace(variable, "Rendimento médio da produção", "yield"),
-#     #variable = str_replace(variable, "Área plantada", "ha_planted"),
-#     yr = as.double(yr)) %>% 
-#   select(.,c("yr", "variable", "value", "state_name"))
-# 
-# yield_BRCerr_states <- left_join(yield_BRCerr_states, BR_abbvs)
-# yield_BRCerr_states <- filter(yield_BRCerr_states, state %in% BRCerr_state_abbvs)
-# 
-# # make data wide to match US data and make it easier to merge
-# yield_BRCerr_states <- pivot_wider(yield_BRCerr_states, names_from = "variable")
-# 
-# # add country and filter to the same variables as US
-# yield_BRCerr_states <- yield_BRCerr_states %>% 
-#   mutate(country = "Brazil") %>% 
-#   select(yr, state, yield, country)
-# 
-# # summarize to regional level
-# yield_BRCerr <- yield_BRCerr_states %>% 
-#   na.omit() %>% 
-#   group_by(yr) %>%
-#   dplyr::summarize(yield = round(mean(yield), digits = 2)) %>% 
-#   mutate(description = " Mean States with Cerrrado",
-#          country = "Brazil")
-
-## 4.5A: BR Yield (Cerrado MicroRegions) -----------
+## 4.5: BR Yield (Cerrado MicroRegions) -----------
 # get state-level data so we can merge to only those states within the extent of the Cerrado
 raw_yield_BR_micro <- get_sidra(x = 1612, 
                                  variable =  c(112), # yielduction and yield # or for first six (excluding value of yielduction) c(109, 1000109, 216, 1000216,214, 112) 
@@ -545,6 +494,7 @@ yield_BRCerr_micro <- raw_yield_BR_micro %>%
     yr = as.double(yr)) %>% 
   select(.,c("yr", "variable", "value", "name_micro_long", "code_micro"))
 
+# Add Cerr MicroRegions to df for aggregating later
 yield_BRCerr_micro$code_micro <- as.double(yield_BRCerr_micro$code_micro)
 
 yield_BRCerr_micro <- left_join(yield_BRCerr_micro, micro_codes_names_cerr)
@@ -627,58 +577,10 @@ area_p_USMW <- area_p_USMWst %>%
 
 ## 5.2: Cerrado Area Planted & Harvested (States) --------
 
-# 1                                                                                                   Área plantada (Hectares) [ a ]
-# 2                                                                              Área plantada - percentual do total geral (%) [ a ]
-# 3                                                                                                          Área colhida (Hectares)
-# 4                                                                                     Área colhida - percentual do total geral (%)
-
-# get state-level data so we can merge to only those states within the extent of the Cerrado
-# raw_sidra_area <- get_sidra(x = 1612, 
-#                        variable =  c(216, 109), # production and yield # or for first six (excluding value of production) c(109, 1000109, 216, 1000216,214, 112) 
-#                        period = as.character(year_range), #2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021
-#                        geo = "State", # Brazil, State, or Município
-#                        geo.filter = NULL,
-#                        classific = "c81",
-#                        category = list(2713), # Soja (em grão)
-#                        header = T,
-#                        format = 3)
-# 
-# # colnames(raw_sidra)
-# 
-# # clean and translate columns
-# area_BR <- raw_sidra_area %>% 
-#   select("Unidade da Federação (Código)", "Unidade da Federação", "Ano", "Variável", "Valor") %>% 
-#   rename(
-#     "state_code" = "Unidade da Federação (Código)",
-#     "state_name" = "Unidade da Federação",
-#     "yr" = "Ano",
-#     "variable" = "Variável",
-#     "value" = "Valor") %>%  
-#   mutate(variable = str_replace(variable, "Área colhida", "area_harvested"),
-#          #variable = str_replace(variable, "Rendimento médio da produção", "yield"
-#          variable = str_replace(variable, "Área plantada", "area_planted"),
-#          yr = as.double(yr)) %>% 
-#   select(.,c("yr", "variable", "value", "state_name"))
-# 
-# area_BR <- left_join(area_BR, BR_abbvs)
-# area_BRCerr_states <- filter(area_BR, state %in% BRCerr_state_abbvs)
-# 
-# # make data wide to match US data and make it easier to merge
-# area_BRCerr_states <- pivot_wider(area_BRCerr_states, names_from = "variable")
-# 
-# # add country and filter to the same variables as US
-# area_BRCerr_states <- area_BRCerr_states %>% 
-#   mutate(country = "Brazil") %>% 
-#   select(yr, state, area_harvested, area_planted, country)
-# 
-# # summarize to regional level
-# area_p_BRCerr <- area_BRCerr_states %>% 
-#   na.omit() %>% 
-#   group_by(yr) %>%
-#   dplyr::summarize(area_planted = round(sum(area_planted), digits = 2)) %>% 
-#   mutate(description = "States with Cerrrado",
-#          country = "Brazil")
-
+# 1   Área plantada (Hectares) [ a ]
+# 2   Área plantada - percentual do total geral (%) [ a ]
+# 3   Área colhida (Hectares)
+# 4   Área colhida - percentual do total geral (%)
 
 ## 5.2: Cerrado Area Planted  & Harvested (MicroRegions) --------
 raw_sidra_area_micro <- get_sidra(x = 1612, 
@@ -690,8 +592,6 @@ raw_sidra_area_micro <- get_sidra(x = 1612,
                             category = list(2713), # Soja (em grão)
                             header = T,
                             format = 3)
-
-# colnames(raw_sidra)
 
 # clean and translate columns
 area_BRCerr_micro <- raw_sidra_area_micro %>% 
@@ -708,6 +608,7 @@ area_BRCerr_micro <- raw_sidra_area_micro %>%
          yr = as.double(yr)) %>% 
   select(.,c("yr", "variable", "value", "name_micro_long", "code_micro"))
 
+# Add MicroRegions for filtering and later aggregating
 area_BRCerr_micro$code_micro <- as.double(area_BRCerr_micro$code_micro)
 
 area_BRCerr_micro <- left_join(area_BRCerr_micro, micro_codes_names_cerr)
@@ -785,16 +686,7 @@ area_h_USMW <- area_h_USMWst %>%
          # 1 Acre = 0.40468564 Hectare
          area_harvested = area_harvested*0.40468564)
 
-## 5.4: Join Area Harvested  ---------
-# get Cerr from Area (Section 5.2)
-area_h_BRCerr <- area_BRCerr_states %>% 
-  na.omit() %>% 
-  group_by(yr) %>%
-  dplyr::summarize(area_harvested = round(sum(area_harvested), digits = 2)) %>% 
-  mutate(description = "States with Cerrrado",
-         country = "Brazil")
-
-## 5.5: Get & Save Areas ----------
+## 5.4: Join Regional Areas (P & H)---------
 df_area_h_USMW_BRCerr <- rbind(area_h_BRCerr_micro, area_h_USMW)
 df_area_h_USMW_BRCerr <- df_area_h_USMW_BRCerr  %>% 
   filter(yr >= 2007 & yr <= 2017)
