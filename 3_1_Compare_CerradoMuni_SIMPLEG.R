@@ -82,6 +82,9 @@ shp_muni <- shp_muni %>%
 # get codes of municpalities in the Cerrado
 load(paste0(folder, "muni_codes_cerr.Rdata"))
 shp_muni <- shp_muni %>% filter(code_muni %in% muni_codes_cerr)
+save(paste0(folder, "muni_codes_cerr.Rdata"))
+st_write(Classmaps01, "Classmaps01.shp")
+load(paste0(folder, "muni_codes_cerr.Rdata"))
 
 # 2: Import SIMPLE-G results ---------
 
@@ -121,8 +124,11 @@ crs(r_cerr) <- crs(sv_muni)
 # set up fxn to calc zonal stats for a given layer based on sv_muni
 # NOTE: since we are doing raw change per grid cell, we want the sum per county
 F_zonal <- function(layer){
-  layer <- zonal(layer, sv_muni, fun = sum, as.raster = T)
+  layer <- zonal(layer, sv_muni, fun = sum, na.rm = T, as.raster = T)
   layer <- layer * 1000 # get from kha to ha to compare with raw data
+  # reclassify NA as 0
+  #layer[is.na(layer)] <- 0
+  #layer <- terra::subst(layer, from = NA, to = 0)
 }
 
 # get list of only layer names that start with rawch to aply our fxn to
