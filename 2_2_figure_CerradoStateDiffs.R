@@ -125,7 +125,7 @@ shp_muni <- shp_muni %>%
 # 5: Plot --------
 
 yr1 <- 2012
-yr2 <- 2017
+yr2 <- 2020
 
 # 5.1: Establish plotting the difference between two years 
 # this new fxn is flexible to calculating the difference between years, prod_BR_diff only used 2012 and 2013
@@ -152,8 +152,10 @@ F_plot_gg_diffpct <- function(data, var, year1, year2){
   class <- classIntervals(
     data[[y_var]],
     fixedBreaks =
-      #c(-100, -80, -60, -40, -20, -1,1, 20, 40, 60, 80, 100)
-      c(-50, -40, -30, -20, -10, -0.1,0.1, 10, 20, 30, 40, 50),
+      #c(-100, -80, -60, -40, -20, -1,1, 20, 40, 60, 80, 100),
+      #c(-50, -40, -30, -20, -10, -0.1,0.1, 10, 20, 30, 40, 50),
+      c(-200, -150, -100, -50, -25, -1,1, 25, 50, 100, 150, 200),
+    
     style = "fixed")
 
   # set new column with the breaks for mapping
@@ -205,7 +207,7 @@ p2 <- p1 +
   theme(legend.text = element_text(size = 15)) & 
   theme(legend.title = element_text(size = 15))
 
-p2
+#p2
 
 ggsave(filename = paste0("../Figures/CerradoStates/Cerrado_ValueProdYield",
                          yr1, "_", yr2, ".png"),
