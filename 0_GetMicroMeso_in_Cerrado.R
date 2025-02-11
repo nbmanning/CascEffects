@@ -3,6 +3,8 @@
 # purpose: Use a similar workflow to other script (section 6.3 in Code 1) but intersect Cerrado shapefile and MicroRegions Shapefile to 
 # end up with a list of MicroRegions in Cerrado. This will be used in 1_data_import_clean.R to SIDRA stats at finest resolution  
 
+# Last Updated: Feb 2025
+
 library(geobr)
 library(sf)
 library(dplyr)

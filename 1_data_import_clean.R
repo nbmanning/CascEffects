@@ -8,8 +8,7 @@
 ## Use of USDA QuickStats requires a Key
 ## Use of datazoom.amazonia requires an OAuth Token to link with Google Drive
 
-# PICK UP BY RE-RUNNING THIS #
-## FINISH SECTION 5 ON AREA AND ADD TO LINE PLOTS 
+# Last Updated: Feb 2025
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
