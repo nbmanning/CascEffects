@@ -385,7 +385,8 @@ breaks2 <- seq(2007, 2018, 1)
 load("../Data_Derived/land_trans_tosoy_df.RData")
 
 df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>% 
-  filter(yr >= 2007 & yr <= 2017)
+  filter(yr >= 2007 & yr <= 2017) %>% 
+  mutate(to_level_4 = str_replace(to_level_4, "Soy Beans", "Soy"))
 
 (p_trans_tosoy <-
     ggplot(df_trans_to_soy_BRCerr_muni, aes(x=yr, y=trans/1000000, color = to_level_4)) +
