@@ -377,6 +377,9 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
 
 br_int_yr <- 2012
 
+labels2 <- paste(seq(2006, 2017, 1), seq(2007, 2018, 1), sep = "-")
+breaks2 <- seq(2007, 2018, 1)
+
 ### 2.2.1: Land Conversion in the Cerrado --------
 
 load("../Data_Derived/land_trans_tosoy_df.RData")
@@ -390,7 +393,9 @@ df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>%
     geom_point(color = col_BR) +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
-    scale_x_continuous(breaks = breaks, labels = breaks)+
+    #scale_x_continuous(breaks = breaks, labels = breaks)+
+    #scale_x_continuous(breaks = seq(2000, 2017, 1), labels = seq(2000, 2017, 1))+
+    scale_x_continuous(breaks = breaks2, labels = labels2)+
     
     theme_bw()+  
     labs(
@@ -424,7 +429,8 @@ df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
     theme_bw()+  
-    scale_x_continuous(breaks = breaks, labels = breaks)+
+    #scale_x_continuous(breaks = breaks, labels = breaks)+
+    scale_x_continuous(breaks = seq(2000, 2017, 1), labels = seq(2000, 2017, 1))+
     
     labs(
       title = "Annual Cerrado Land Conversion to Soy & Other Non-Native Cover",
@@ -446,7 +452,9 @@ df_trans_deforest <- read.csv("../Data_Source/Terrabrasilis_CerradoDeforestation
     geom_point(color = col_BR) +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
-    scale_x_continuous(breaks = seq(2000, 2022, 2), labels = seq(2000, 2022, 2))+
+    #scale_x_continuous(breaks = seq(2000, 2022, 2), labels = seq(2000, 2022, 2))+
+    scale_x_continuous(breaks = seq(2000, 2017, 1), labels = seq(2000, 2017, 1))+
+    
     theme_bw()+  
     labs(
       title = "Annual Cerrado Deforestation",
@@ -461,13 +469,17 @@ df_trans_deforest <- read.csv("../Data_Source/Terrabrasilis_CerradoDeforestation
 
 # filter to only 2007-2017
 df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
+
 (p_trans_deforest2 <-
     ggplot(df_trans_deforest, aes(x=year, y=area_km2)) +
     geom_line(color = col_BR) + 
     geom_point(color = col_BR) +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
-    scale_x_continuous(breaks = breaks, labels = breaks)+
+    #scale_x_continuous(breaks = breaks, labels = breaks)+
+    scale_x_continuous(breaks = seq(2000, 2017, 1), labels = seq(2000, 2017, 1))+
+    #scale_x_continuous(breaks = breaks2, labels = labels2)+
+    
     theme_bw()+  
     labs(
       title = "Annual Cerrado Deforestation",
@@ -493,12 +505,13 @@ p1 <-
   
   p_yield_usmwbrcerr + 
   #p_yield_usbr +
+  
+  p_price_usmwbrcerr +  
+ 
+  p_exportqty_usbr_toworld + 
+  
   #p_area_p_regional+
   p_area_h_regional+
-  
- 
-  p_price_usmwbrcerr +  
-  p_exportqty_usbr_toworld + 
   
   #p_exportvalue_usbr_toworld + 
   #p_exportvalue_usbr_tochina + 
@@ -548,6 +561,6 @@ p2 <- p2 +
 
 p2
 
-ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v4.png",
+ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v6.png",
        p2, height = 16, width = 20, 
        dpi = 300)  
