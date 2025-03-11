@@ -388,9 +388,11 @@ df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>%
   filter(yr >= 2007 & yr <= 2017)
 
 (p_trans_tosoy <-
-    ggplot(df_trans_to_soy_BRCerr_muni, aes(x=yr, y=trans/1000000)) +
-    geom_line(color = col_BR) + 
-    geom_point(color = col_BR) +
+    ggplot(df_trans_to_soy_BRCerr_muni, aes(x=yr, y=trans/1000000, color = to_level_4)) +
+    # geom_line(color = col_BR) + 
+    # geom_point(color = col_BR) +
+    geom_line() +
+    geom_point() +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
     #scale_x_continuous(breaks = breaks, labels = breaks)+
@@ -405,7 +407,8 @@ df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>%
       y = "Land Conversion (Mha)"
     )+
     
-    theme(legend.position="none")+    
+    # theme(legend.position="none")+
+    theme(legend.position= c(0.9, 0.4), legend.title = element_blank())+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
 
 )
@@ -500,37 +503,37 @@ library(patchwork)
 
 # option to add other stats here
 p1 <- 
-  p_prod_regional +
-  p_prod_national +
+  p_prod_regional + theme(legend.position = "none") +
+  p_prod_national + theme(legend.position = "none")+
   
-  p_yield_usmwbrcerr + 
+  p_yield_usmwbrcerr + theme(legend.position = "none")+ 
   #p_yield_usbr +
   
-  p_price_usmwbrcerr +  
+  p_price_usmwbrcerr + theme(legend.position = "none")+  
  
-  p_exportqty_usbr_toworld + 
+  p_exportqty_usbr_toworld + theme(legend.position = "none")+ 
   
   #p_area_p_regional+
-  p_area_h_regional+
+  p_area_h_regional+ theme(legend.position = "none")+
   
   #p_exportvalue_usbr_toworld + 
   #p_exportvalue_usbr_tochina + 
   
-  p_trans_deforest2 + 
-  p_trans_tosoy
+  p_trans_deforest2 + theme(legend.position = "none")+ 
+  p_trans_tosoy + theme(legend.title = element_blank())
 
 p1
 
 # manually extract one legend to add to plot since it keeps duplicating
-library(cowplot)
-legend <- cowplot::get_legend(p_prod_national + theme(legend.position = "bottom"))
-combined_plot <- cowplot::plot_grid(
-  p_prod_regional + theme(legend.position = "none"),
-  p_prod_national + theme(legend.position = "none"),
-  legend,
-  ncol = 1,
-  rel_heights = c(1, 1, 0.1)
-)
+# library(cowplot)
+# legend <- cowplot::get_legend(p_prod_national + theme(legend.position = "bottom"))
+# combined_plot <- cowplot::plot_grid(
+#   p_prod_regional + theme(legend.position = "none"),
+#   p_prod_national + theme(legend.position = "none"),
+#   legend,
+#   ncol = 1,
+#   rel_heights = c(1, 1, 0.1)
+# )
 
 theme_text_sizes <- theme(
   # Set size and style for the title
@@ -550,10 +553,11 @@ theme_text_sizes <- theme(
 ) 
 
 p2 <- p1 +
-  plot_layout(nrow = 4, guides = "collect") & 
+  #plot_layout(nrow = 4, guides = "collect") & 
+  plot_layout(nrow = 4) #& 
   #theme(legend.position = 'bottom') &
-  theme(legend.position = 'none') &
-  theme_text_sizes 
+  #theme(legend.position = 'none') &
+  #theme_text_sizes 
 
 p2 <- p2 + 
   plot_annotation(tag_levels = 'A') +     
@@ -561,6 +565,6 @@ p2 <- p2 +
 
 p2
 
-ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v6.png",
+ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v8.png",
        p2, height = 16, width = 20, 
        dpi = 300)  
