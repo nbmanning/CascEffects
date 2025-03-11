@@ -720,7 +720,7 @@ load(file = "../Data_Source/source_mapb_trans_municip.Rdata")
 
 # filter to just transitioning to soybeans 
 trans_tosoy_BR <- source_mapb_trans_municip %>%
-  filter(to_level_4 == "Soy Beans")
+  filter(to_level_4 == "Soy Beans" | to_level_4 == "Pasture")
 
 
 # break up intervals into start and end year (going from )
@@ -733,6 +733,7 @@ str(trans_tosoy_BR)
 # this means that 2013 captures the 2012-13 harvest year in BR 
 trans_tosoy_BR <- trans_tosoy_BR %>% 
   filter(end_year == start_year+1) %>% 
+  filter(to_level_4 != from_level_4) %>% 
   select("year", "end_year","start_year","state","municipality","municipality_code",
          "from_level_0", "from_level_1", "from_level_2", "from_level_3", "from_level_4",     
          "to_level_0", "to_level_1", "to_level_2", "to_level_3", "to_level_4",      
@@ -748,7 +749,7 @@ trans_tosoy_BRmunicip_agg <- trans_tosoy_BRmunicip_agg %>%
   rename(
     "yr" = "end_year",
     "trans" = "value") %>%
-  select(., c("yr","state", "municipality", "municipality_code", "trans")) %>% 
+  select(., c("yr","state", "municipality", "municipality_code", "trans", "to_level_4")) %>% 
   mutate(country = "Brazil")
 
 # keep municip data
@@ -793,7 +794,7 @@ trans_tosoy_cerrmuni <- trans_tosoy %>%
 # Aggregate to one value per year
 # agg to one value per entire region per year
 df_trans_to_soy_BRCerr_muni <- trans_tosoy_cerrmuni %>% 
-  aggregate(trans ~ yr, ., sum) %>%
+  aggregate(trans ~ yr + to_level_4, ., sum) %>%
   mutate(country = "Brazil")
 
 df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>% filter(yr >= 2007 & yr <= 2017)
