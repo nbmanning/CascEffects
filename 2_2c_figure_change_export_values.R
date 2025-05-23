@@ -132,6 +132,12 @@ e_v_brw_2013 <- e_v_brw %>%
   select(Fobvalue) %>% 
   as.numeric()
 
+# get 2012 
+e_v_brw_2012 <- e_v_brw %>% 
+  filter(Period == 2012) %>% 
+  select(Fobvalue) %>% 
+  as.numeric()
+
 # 5-Year Average
 e_v_brw_5yravg_20032012 <- e_v_brw %>% 
   filter(Period < 2013 & Period >= 2008) %>% 
@@ -141,6 +147,9 @@ e_v_brw_5yravg_20032012 <- e_v_brw %>%
 # n = value, p = %
 diff5_n_v_brw <- e_v_brw_2013 - e_v_brw_5yravg_20032012
 diff5_p_v_brw <- (diff5_n_v_brw/e_v_brw_5yravg_20032012) *100
+
+# previous year average
+
 
 ### 3.1.2 BR --> China ---------
 e_v_brc <- df_br %>%
@@ -220,12 +229,7 @@ exports_usbr<- exports_usbr %>%
   select(Area, Year, Element, Value) %>% 
   filter(Year >= 2003 & Year <= 2017)
 
-# Calc Differences from 2013 to 10-year average
-e_q_brw_10yravg_20032012 <- exports_usbr %>% 
-  filter(Year < 2013 & Year >= 2003 & Area == "Brazil") %>% 
-  summarise(avg_prev10yr = mean(Value)) %>%
-  as.numeric()
-
+# Calc Differences from 2013 to 5-year average
 e_q_brw_2013 <- exports_usbr %>% 
   filter(Year == 2013 & Area == "Brazil") %>% 
   select(Value) %>% 
@@ -235,9 +239,6 @@ e_q_brw_2012 <- exports_usbr %>%
   filter(Year == 2012 & Area == "Brazil") %>% 
   select(Value) %>% 
   as.numeric()
-
-# diff10_n_q_brw <- e_q_brw_2013 - e_q_brw_10yravg_20032012
-# diff10_p_q_brw <- (diff_n_q_brw/e_q_brw_10yravg_20032012) *100
 
 # 5-Year Average
 e_q_brw_5yravg_20032012 <- exports_usbr %>% 
@@ -263,19 +264,12 @@ exports_br_to_china<- exports_br_to_china %>%
   filter(Year >= 2003 & Year <= 2017) %>% 
   filter(Partner.Countries== "China, mainland")
 
-# Calc Differences from 2013 to 10-year average
-e_q_brc_10yravg_20032012 <- exports_br_to_china %>% 
-  filter(Year < 2013 & Year >= 2003) %>% 
-  summarise(avg_prev10yr = mean(Value)) %>%
-  as.numeric()
+# Calc Differences from 2013 to 5-year average
 
 e_q_brc_2013 <- exports_br_to_china %>% 
   filter(Year == 2013) %>% 
   select(Value) %>% 
   as.numeric()
-
-diff10_n_q_brc <- e_q_brc_2013 - e_q_brc_10yravg_20032012
-# diff10_p_q_brc <- (diff_n_q_brc/e_q_brc_10yravg_20032012) *100
 
 # 5-Year Average
 e_q_brc_5yravg_20032012 <- exports_usbr %>% 
@@ -294,19 +288,10 @@ exports_usbr<- exports_usbr %>%
   select(Area, Year, Element, Value) %>% 
   filter(Year >= 2003 & Year <= 2017)
 
-# Calc Differences from 2013 to 10-year average
-e_q_usw_10yravg_20032012 <- exports_usbr %>% 
-  filter(Year < 2013 & Year >= 2003 & Area == "United States of America") %>% 
-  summarise(avg_prev10yr = mean(Value)) %>%
-  as.numeric()
-
 e_q_usw_2013 <- exports_usbr %>% 
   filter(Year == 2013 & Area == "United States of America") %>% 
   select(Value) %>% 
   as.numeric()
-
-# diff10_n_q_usw <- e_q_usw_2013 - e_q_usw_10yravg_20032012
-# diff10_p_q_usw <- (diff_n_q_usw/e_q_usw_10yravg_20032012) *100
 
 # 5-Year Average
 e_q_usw_5yravg_20032012 <- exports_usbr %>% 
@@ -327,19 +312,11 @@ exports_us_to_china<- exports_us_to_china %>%
   filter(PartnerDesc == "China") %>% 
   filter(ReporterDesc == "USA")
 
-# Calc Differences from 2013 to 10-year average
-e_q_usc_10yravg_20032012 <- exports_us_to_china %>% 
-  filter(Period < 2013 & Period >= 2003) %>% 
-  summarise(avg_prev10yr = mean(Qty)) %>%
-  as.numeric()
 
 e_q_usc_2013 <- exports_us_to_china %>% 
   filter(Period == 2013) %>% 
   select(Qty) %>% 
   as.numeric()
-
-diff10_n_q_usc <- e_q_usc_2013 - e_q_usc_10yravg_20032012
-# diff10_p_q_usc <- (diff_n_q_usc/e_q_usc_10yravg_20032012) *100
 
 # 5-Year Average
 e_q_usc_5yravg_20082012 <- exports_us_to_china %>% 
@@ -456,7 +433,9 @@ df2_exp <- df2_exp %>% mutate(
   pct_fobvalue = (fobvalue/num_exp_world_2023_value)*100
 )
 
-
+df2_eu_usbr <- df2_exp %>% 
+  filter()
+  
 # GRAVEYARD -------------------
 
 # G1: Get Difference Stats -----------------
@@ -526,6 +505,22 @@ df_eu <- df %>%
   group_by(ReporterDesc, Period) %>% 
   summarise(Fobvalue = sum(Fobvalue)) %>% 
   mutate(PartnerDesc = "EU")
+
+df_eu_all <- df %>% 
+  filter(PartnerDesc %in% list_eu_partners)
+
+df_eu_all2 <- df_eu_all %>% 
+  
+  #filter(Period %in% years_of_interest) %>% 
+  filter(Period == 2012 | Period == 2013) %>% 
+  
+  # calculate differences 
+  group_by(ReporterDesc, PartnerDesc) %>% 
+  mutate(
+    # Difference = 2022 - 2021 per country
+    ValueDiff = Fobvalue - lag(Fobvalue),
+    # Pct Difference = ((2022-2021)/2021)*100 per country
+    ValueDiffPct = ((Fobvalue - lag(Fobvalue))/lag(Fobvalue))*100)
 
 # use previous function to get trade differences
 df_eu <- df_eu %>% 
