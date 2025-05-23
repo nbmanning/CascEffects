@@ -118,6 +118,8 @@ ggsave(
 ## 3.1: Difference in Export Value --------
 
 ### 3.1.1 BR --> World ---------
+
+# e_v_brw means export_value_BrazilToWorld
 e_v_brw <- df %>%
   filter(ReporterDesc == "Brazil" & PartnerDesc == "World") #%>% 
   #select(ReporterDesc, Period, annual_sum) 
@@ -136,6 +138,7 @@ e_v_brw_5yravg_20032012 <- e_v_brw %>%
   summarise(avg_prev5yr = mean(Fobvalue)) %>%
   as.numeric()
 
+# n = value, p = %
 diff5_n_v_brw <- e_v_brw_2013 - e_v_brw_5yravg_20032012
 diff5_p_v_brw <- (diff5_n_v_brw/e_v_brw_5yravg_20032012) *100
 
@@ -161,6 +164,53 @@ e_v_brc_5yravg_20032012 <- e_v_brc %>%
 diff5_n_v_brc <- e_v_brc_2013 - e_v_brc_5yravg_20032012
 diff5_p_v_brc <- (diff5_n_v_brc/e_v_brc_5yravg_20032012) *100
 
+### 3.1.3 US --> World ---------
+
+# e_v_usw means export_value_USToWorld
+e_v_usw <- df %>%
+  filter(ReporterDesc == "USA" & PartnerDesc == "World") #%>% 
+#select(ReporterDesc, Period, annual_sum) 
+
+# Calc Differences from 2013 to 5-year average
+
+# get 2013
+e_v_usw_2013 <- e_v_usw %>% 
+  filter(Period == 2013) %>% 
+  select(Fobvalue) %>% 
+  as.numeric()
+
+# 5-Year Average
+e_v_usw_5yravg_20032012 <- e_v_usw %>% 
+  filter(Period < 2013 & Period >= 2008) %>% 
+  summarise(avg_prev5yr = mean(Fobvalue)) %>%
+  as.numeric()
+
+# n = value, p = %
+diff5_n_v_usw <- e_v_usw_2013 - e_v_usw_5yravg_20032012
+diff5_p_v_usw <- (diff5_n_v_usw/e_v_usw_5yravg_20032012) *100
+
+### 3.1.2 US --> China ---------
+e_v_usc <- df_us %>%
+  filter(ReporterDesc == "USA" & PartnerDesc == "China") #%>% 
+#select(ReporterDesc, Period, annual_sum) 
+
+# Calc Differences from 2013 to 5-year average
+
+# get 2013
+e_v_usc_2013 <- e_v_usc %>% 
+  filter(Period == 2013) %>% 
+  select(Fobvalue) %>% 
+  as.numeric()
+
+# 5-Year Average
+e_v_usc_5yravg_20032012 <- e_v_usc %>% 
+  filter(Period < 2013 & Period >= 2008)  %>% 
+  summarise(avg_prev5yr = mean(Fobvalue)) %>%
+  as.numeric()
+
+diff5_n_v_usc <- e_v_usc_2013 - e_v_usc_5yravg_20032012
+diff5_p_v_usc <- (diff5_n_v_usc/e_v_usc_5yravg_20032012) *100
+
 ## 3.2 Difference in Export Quantity ----------
 
 ### 3.2.1 BR --> World ---------
@@ -181,8 +231,13 @@ e_q_brw_2013 <- exports_usbr %>%
   select(Value) %>% 
   as.numeric()
 
-diff10_n_q_brw <- e_q_brw_2013 - e_q_brw_10yravg_20032012
-diff10_p_q_brw <- (diff_n_q_brw/e_q_brw_10yravg_20032012) *100
+e_q_brw_2012 <- exports_usbr %>% 
+  filter(Year == 2012 & Area == "Brazil") %>% 
+  select(Value) %>% 
+  as.numeric()
+
+# diff10_n_q_brw <- e_q_brw_2013 - e_q_brw_10yravg_20032012
+# diff10_p_q_brw <- (diff_n_q_brw/e_q_brw_10yravg_20032012) *100
 
 # 5-Year Average
 e_q_brw_5yravg_20032012 <- exports_usbr %>% 
@@ -191,8 +246,14 @@ e_q_brw_5yravg_20032012 <- exports_usbr %>%
   as.numeric()
 
 diff5_n_q_brw <- e_q_brw_2013 - e_q_brw_5yravg_20032012
-diff5_p_q_brw <- (diff_n_q_brw/e_q_brw_5yravg_20032012) *100
+diff5_p_q_brw <- (diff5_n_q_brw/e_q_brw_5yravg_20032012) *100
 
+# vs. Previous Year
+diff1_n_q_brw <- e_q_brw_2013 - e_q_brw_2012
+diff5_p_q_brw <- (diff5_n_q_brw/e_q_brw_5yravg_20032012) *100
+
+
+# find change from 2012-2013 in percent then do the same for others 
 
 ### 3.2.2 BR --> China ---------
 # Import CSV
@@ -214,7 +275,7 @@ e_q_brc_2013 <- exports_br_to_china %>%
   as.numeric()
 
 diff10_n_q_brc <- e_q_brc_2013 - e_q_brc_10yravg_20032012
-diff10_p_q_brc <- (diff_n_q_brc/e_q_brc_10yravg_20032012) *100
+# diff10_p_q_brc <- (diff_n_q_brc/e_q_brc_10yravg_20032012) *100
 
 # 5-Year Average
 e_q_brc_5yravg_20032012 <- exports_usbr %>% 
@@ -223,13 +284,178 @@ e_q_brc_5yravg_20032012 <- exports_usbr %>%
   as.numeric()
 
 diff5_n_q_brc <- e_q_brc_2013 - e_q_brc_5yravg_20032012
-diff5_p_q_brc <- (diff_n_q_brc/e_q_brc_5yravg_20032012) *100
+diff5_p_q_brc <- (diff5_n_q_brc/e_q_brc_5yravg_20032012) *100
+
+### 3.2.3 US --> World ---------
+# Import CSV
+#exports_usbr <-read.csv("../Data_Source/FAOSTAT_BrUS_2000_2020_ExportQuantity.csv")
+exports_usbr <-read.csv("../Data_Source/FAOSTAT_BrUS_2000_2020_ExportQuantity.csv")
+exports_usbr<- exports_usbr %>% 
+  select(Area, Year, Element, Value) %>% 
+  filter(Year >= 2003 & Year <= 2017)
+
+# Calc Differences from 2013 to 10-year average
+e_q_usw_10yravg_20032012 <- exports_usbr %>% 
+  filter(Year < 2013 & Year >= 2003 & Area == "United States of America") %>% 
+  summarise(avg_prev10yr = mean(Value)) %>%
+  as.numeric()
+
+e_q_usw_2013 <- exports_usbr %>% 
+  filter(Year == 2013 & Area == "United States of America") %>% 
+  select(Value) %>% 
+  as.numeric()
+
+# diff10_n_q_usw <- e_q_usw_2013 - e_q_usw_10yravg_20032012
+# diff10_p_q_usw <- (diff_n_q_usw/e_q_usw_10yravg_20032012) *100
+
+# 5-Year Average
+e_q_usw_5yravg_20032012 <- exports_usbr %>% 
+  filter(Year < 2013 & Year >= 2008 & Area == "United States of America") %>% 
+  summarise(avg_prev5yr = mean(Value)) %>%
+  as.numeric()
+
+diff5_n_q_usw <- e_q_usw_2013 - e_q_usw_5yravg_20032012
+diff5_p_q_usw <- (diff5_n_q_usw/e_q_usw_5yravg_20032012) *100
+
+
+### 3.2.2 US --> China ---------
+# Import CSV
+exports_us_to_china <-read.csv("../Data_Source/UNComtrade_USBR_HS1201_20072018.csv")
+exports_us_to_china<- exports_us_to_china %>% 
+  select(ReporterDesc, PartnerDesc, Period, CmdDesc, Qty) %>% 
+  filter(Period >= 2003 & Period <= 2017) %>% 
+  filter(PartnerDesc == "China") %>% 
+  filter(ReporterDesc == "USA")
+
+# Calc Differences from 2013 to 10-year average
+e_q_usc_10yravg_20032012 <- exports_us_to_china %>% 
+  filter(Period < 2013 & Period >= 2003) %>% 
+  summarise(avg_prev10yr = mean(Qty)) %>%
+  as.numeric()
+
+e_q_usc_2013 <- exports_us_to_china %>% 
+  filter(Period == 2013) %>% 
+  select(Qty) %>% 
+  as.numeric()
+
+diff10_n_q_usc <- e_q_usc_2013 - e_q_usc_10yravg_20032012
+# diff10_p_q_usc <- (diff_n_q_usc/e_q_usc_10yravg_20032012) *100
+
+# 5-Year Average
+e_q_usc_5yravg_20082012 <- exports_us_to_china %>% 
+  filter(Period < 2013 & Period >= 2008 & ReporterDesc == "USA") %>% 
+  summarise(avg_prev5yr = mean(Qty)) %>%
+  as.numeric()
+
+diff5_n_q_usc <- e_q_usc_2013 - e_q_usc_5yravg_20082012
+diff5_p_q_usc <- (diff5_n_q_usc/e_q_usc_5yravg_20082012) *100
 
 # 4: In-Text ------
 # When compared to the previous 5-year averages, in the year following the 
 # US drought there was an increase in the quantity and value of soybean exports from 
 # Brazil to the rest of the world of 58% and 70% (respectively) and export quantity and value 
 # to China increased 66% and 71%.
+
+# 5: Global Export Leaders -- are they Brazil and the US? -------
+## 5.0 - get world imp and exp numbers  
+raw <- read_excel("../Data_Source/UNComtrade_ImpExp_20232024.xlsx", sheet = "Sheet1")
+
+# get the summed total imports
+world_imports <- raw %>% 
+  select(reporterDesc, partnerDesc, period, fobvalue, qty, flowDesc) %>%
+  filter(flowDesc == "Import") %>% 
+  filter(partnerDesc == "World") %>% 
+  filter(period == 2023) %>%
+  arrange(partnerDesc, reporterDesc, period) %>% 
+  group_by(partnerDesc, period) %>% 
+  summarise(qty = sum(qty, na.rm = T), fobvalue = sum(fobvalue, na.rm = T))
+
+### PICK UP HERE #############
+# You were trying to set up world maxes first to divide into percentages
+num_imp_world_2023_qty <- world_imports$qty
+num_imp_world_2023_value <- world_imports$fobvalue
+
+
+# get the summed total world exports
+world_exports <- raw %>% 
+  select(reporterDesc, partnerDesc, period, fobvalue, qty, flowDesc) %>%
+  filter(flowDesc == "Export") %>% 
+  filter(partnerDesc == "World") %>% 
+  filter(period == 2023) %>%
+  arrange(partnerDesc, reporterDesc, period) %>% 
+  group_by(partnerDesc, period) %>% 
+  summarise(qty = sum(qty, na.rm = T), fobvalue = sum(fobvalue, na.rm = T))
+
+num_exp_world_2023_qty <- world_exports$qty
+num_exp_world_2023_value <- world_exports$fobvalue
+
+
+
+## 5.1: Global Import Leaders -- are they China and the EU? -------
+raw <- read_excel("../Data_Source/UNComtrade_ImpExp_20232024.xlsx", sheet = "Sheet1")
+
+df <- raw %>% 
+  select(reporterDesc, partnerDesc, period, fobvalue, qty, flowDesc) %>%
+  filter(flowDesc == "Import") %>% 
+  #filter(partnerDesc == "World") %>% 
+  filter(period == 2023) %>%
+  arrange(partnerDesc, reporterDesc, period)
+
+
+###
+# find all EU states that have traded with BR and US 
+list_eu_partners <- intersect(list_eu, df$reporterDesc)
+
+# get the sum of all EU countries by trading partner by year (e.g. different sum for all BR2012 and US2012)
+df_eu <- df %>% 
+  filter(reporterDesc %in% list_eu_partners) %>% 
+  group_by(partnerDesc, period) %>% 
+  summarise(qty = sum(qty, na.rm = T), fobvalue = sum(fobvalue, na.rm = T)) %>% 
+  #summarise(fobvalue = sum(fobvalue, na.rm = T)) %>% 
+  mutate(reporterDesc = "EU", flowDesc = "Import")
+
+df2_imp <- rbind(df, df_eu)
+
+
+
+df2_imp <- df2_imp %>% mutate(
+  pct_qty = (qty/num_imp_world_2023_qty)*100,
+  pct_fobvalue = (fobvalue/num_imp_world_2023_value)*100
+  )
+  
+
+## 5.1: Global Export Leaders -- are they Brazil and the US? (TP_DO: CHANGE IMP TO EXP xx) -------
+raw <- read_excel("../Data_Source/UNComtrade_ImpExp_20232024.xlsx", sheet = "Sheet1")
+
+df <- raw %>% 
+  select(reporterDesc, partnerDesc, period, fobvalue, qty, flowDesc) %>%
+  filter(flowDesc == "Export") %>% 
+  #filter(partnerDesc == "World") %>% 
+  filter(period == 2023) %>%
+  arrange(partnerDesc, reporterDesc, period)
+
+
+###
+# find all EU states that have traded with BR and US 
+list_eu_partners <- intersect(list_eu, df$partnerDesc)
+
+# get the sum of all EU countries by trading partner by year (e.g. different sum for all BR2012 and US2012)
+df_eu <- df %>% 
+  filter(partnerDesc %in% list_eu_partners) %>% 
+  group_by(reporterDesc, period) %>% 
+  summarise(qty = sum(qty, na.rm = T), fobvalue = sum(fobvalue, na.rm = T)) %>% 
+  #summarise(fobvalue = sum(fobvalue, na.rm = T)) %>% 
+  mutate(partnerDesc = "EU", flowDesc = "Export")
+
+df2_exp <- rbind(df, df_eu)
+
+
+
+df2_exp <- df2_exp %>% mutate(
+  pct_qty = (qty/num_exp_world_2023_qty)*100,
+  pct_fobvalue = (fobvalue/num_exp_world_2023_value)*100
+)
+
 
 # GRAVEYARD -------------------
 
@@ -349,3 +575,11 @@ F_plot_comp <- function(df_c){
 
 # China
 F_plot_comp(df_china)
+
+
+# G4: Other text -----
+# from "UNComtrade_USBR_Exports_20072019_sheet.xlsx"
+24553595386 # US 2013 Export Qty --> China
+39401117964 # US 2013 Export Qty --> world
+24553595386/39401117964
+# 
