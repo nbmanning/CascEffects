@@ -404,7 +404,7 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
      y = "Soybean Price (USD/bu)"
    )+
    
-   theme(legend.position="none")+
+   theme(legend.position="none", legend.text = element_text(size = 12))+
    theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
  
 )
@@ -554,7 +554,7 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 library(patchwork)
 
 # option to add other stats here
-#p1 <- 
+p1 <- 
   (p_prod_regional + theme(legend.position = "none") + theme_text_sizes) +
   (p_prod_national + theme(legend.position = "none")+ theme_text_sizes) +
   (p_yield_usmwbrcerr + theme(legend.position = "none")+ theme_text_sizes) +
@@ -570,6 +570,9 @@ library(patchwork)
      theme(legend.text = element_text(size = 12), legend.title = element_blank()))
 
 p1
+
+
+####
 
 # manually extract one legend to add to plot since it keeps duplicating
 # library(cowplot)
@@ -614,6 +617,6 @@ p2 <- p2 +
 
 #p2
 
-ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v9.png",
+ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v10.png",
        p2, height = 15, width = 18, 
        dpi = 300)  
