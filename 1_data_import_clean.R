@@ -27,7 +27,7 @@ library(geobr) # load BR shapefiles
 library(sf) # intersect
 
 ## Constants -----
-year_range <- 2000:2020
+year_range <- 2000:2024
 BR_abbvs <- read.csv("../Data_Source/br_st_abbv.csv", header = T)
 
 micro_codes_names_cerr <- read.csv(file = "../Data_Source/microregion_codes_names_cerrado.csv")
