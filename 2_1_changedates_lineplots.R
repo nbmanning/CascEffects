@@ -32,6 +32,11 @@ library(terra)
 breaks <- c(2007, 2012, 2017)
 col_US = "salmon"
 col_BR = "cornflowerblue"
+col_pas = "purple"
+col_soy = "green"
+pt_us = 17 # triangle
+pt_br = 16 # circle
+pt_size = 2
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -70,32 +75,42 @@ theme_text_sizes <- theme(
   ) 
 
 ## 1.0 : Create Plotting Function --------
-F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axis_title){
-  # set plot parameters as inputs from the fxn
-  ggplot(df, aes(x={{x_var}}, y={{y_var}}, color = {{group_var}}, group = {{group_var}})) +
-    geom_line() + 
-    geom_point() +
+F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axis_title) {
+  ggplot(df, aes(x = {{x_var}}, y = {{y_var}}, group = {{group_var}})) +
+    
+    # set line and color shape based on fxn input (probably "country")
+    geom_line(aes(color = {{group_var}})) + 
+    geom_point(aes(color = {{group_var}}, shape = {{group_var}}), size = pt_size) +
+    
     # create a vertical dashed line on the 2012-2013 harvest season
-    geom_vline(aes(xintercept = "2012-2013"), color = "red",
-               linetype="dashed", linewidth=0.5)+
-    theme_bw()+
-    # set up legend manually
+    geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype = "dashed", linewidth = 0.5) +
+    theme_bw() +
+    
+    # set up legend manually 
     scale_color_manual(
       name = "Country",
-      values = c(
-        US = col_US,
-        Brazil = col_BR),
-      breaks = c("US", "Brazil"))+
-    # set labels
+      values = c(US = col_US, Brazil = col_BR),
+      breaks = c("US", "Brazil")
+    ) +
+    scale_shape_manual(
+      name = "Country",
+      values = c(US = pt_us, Brazil = pt_br),
+      breaks = c("US", "Brazil")
+    ) +
+    
+    # add labels
     labs(
       title = title,
       subtitle = subtitle,
       x = "",
-      y = y_axis_title)+   
-    # adjust theme to turn labels vertical and remove legend for plotting fxn
+      y = y_axis_title
+    ) +
     
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8),
-          legend.position = "none")
+    # adjust theme to turn labels vertical and remove legend for plotting fxn
+    theme(
+      axis.text.x = element_text(angle = 90, vjust = 0.8),
+      legend.position = "none"
+    )
 }
 
 # (p2_prod_national <- F_plot_harvestMY(
@@ -119,36 +134,36 @@ y_lower <- min(df2_prod_USMW_BRCerr$prod)
 y_limits <- range(y_lower, y_upper)
 
 # plot 
-(p_prod_regional <- 
-    ggplot(df2_prod_USMW_BRCerr, aes(x=harvest_marketyr, y=prod, color = country, group = country)) +
-    geom_point() +
-    geom_line() + 
-    ylim(y_limits) +  # Use NA for the lower limit
-  geom_vline(aes(xintercept = "2012-2013"), color = "red",
-             linetype="dashed", linewidth=0.5)+
-  theme_bw()+
-  scale_color_manual(
-    name = "Country",
-    values = c(
-      US = col_US,
-      Brazil = col_BR),
-    breaks = c("US", "Brazil"),
-    #labels = c("US-MW", "Cerrado")
-  )+
-  scale_x_discrete()+
-  labs(
-    title = "Annual Regional Soybean Production",
-    subtitle = "Data Sources: USDA-NASS & SIDRA",
-    x = "",
-    y = "Production (mt)"
-  )+
-  
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
-        # keep legend on one plot for the final graph
-        #legend.position = "none"
-  )
-)
+(p_prod_regional <-
+    ggplot(df2_prod_USMW_BRCerr, aes(x = harvest_marketyr, y = prod, group = country)) +
+    geom_point(aes(color = country, shape = country), size = pt_size) +
+    geom_line(aes(color = country)) + 
+    ylim(y_limits) + # use NA for lower limits
+    geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype = "dashed", linewidth = 0.5) +
+    theme_bw() +
+    
+    scale_color_manual(
+      name = "Country",
+      values = c(US = col_US, Brazil = col_BR),
+      breaks = c("US", "Brazil")
+    ) +
+    scale_shape_manual(
+      name = "Country",
+      values = c(US = pt_us, Brazil = pt_br), # 16 = filled circle, 17 = filled triangle
+      breaks = c("US", "Brazil")
+    ) +
+    scale_x_discrete() +
+    
+    labs(
+      title = "Annual Regional Soybean Production",
+      subtitle = "Data Sources: USDA-NASS & SIDRA",
+      x = "",
+      y = "Production (mt)"
+    ) +
+    
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.8))  # keep legend on one plot for the final graph
 
+)
 
 
 
@@ -156,9 +171,9 @@ y_limits <- range(y_lower, y_upper)
 
 # Plotted manually so we can compare axes more easily
 (p_prod_national <- 
-    ggplot(df2_prod_USBR, aes(x=harvest_marketyr, y=prod, color = country, group = country)) +
-    geom_point() +
-    geom_line() + 
+    ggplot(df2_prod_USBR, aes(x=harvest_marketyr, y=prod, group = country)) +
+   geom_point(aes(color = country, shape = country), size = pt_size) +
+   geom_line(aes(color = country)) + 
     ylim(y_limits) +  # Use NA for the lower limit
     geom_vline(aes(xintercept = "2012-2013"), color = "red",
                linetype="dashed", linewidth=0.5)+
@@ -171,6 +186,11 @@ y_limits <- range(y_lower, y_upper)
       breaks = c("US", "Brazil"),
       #labels = c("US-MW", "Cerrado")
     )+
+   scale_shape_manual(
+     name = "Country",
+     values = c(US = pt_us, Brazil = pt_br),
+     breaks = c("US", "Brazil")
+   ) +
     scale_x_discrete()+
     labs(
       title = "Annual National Soybean Production",
@@ -276,9 +296,9 @@ df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
 
 # plot
 (p_area_h_regional <- 
-    ggplot(df2_area_h_USMW_BRCerr, aes(x=harvest_marketyr, y=area_harvested, color = country, group = country)) +
-    geom_point() +
-    geom_line() + 
+    ggplot(df2_area_h_USMW_BRCerr, aes(x=harvest_marketyr, y=area_harvested, group = country)) +
+    geom_point(aes(color = country, shape = country), size = pt_size) +
+    geom_line(aes(color = country)) + 
     geom_vline(aes(xintercept = "2012-2013"), color = "red",
                linetype="dashed", linewidth=0.5)+
     theme_bw()+
@@ -289,6 +309,11 @@ df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
         Brazil = col_BR),
       breaks = c("US", "Brazil")
     )+
+    scale_shape_manual(
+      name = "Country",
+      values = c(US = pt_us, Brazil = pt_br),
+      breaks = c("US", "Brazil")
+    ) +
     scale_x_discrete()+
     labs(
       title = "Annual Regional Soybean Area Harvested",
@@ -307,9 +332,9 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
 
 # plot
 (p_area_p_regional <- 
-    ggplot(df2_area_p_USMW_BRCerr, aes(x=harvest_marketyr, y=area_planted, color = country, group = country)) +
-    geom_point() +
-    geom_line() + 
+    ggplot(df2_area_p_USMW_BRCerr, aes(x=harvest_marketyr, y=area_planted, group = country)) +
+    geom_point(aes(color = country, shape = country), size = pt_size) +
+    geom_line(aes(color = country)) + 
     geom_vline(aes(xintercept = "2012-2013"), color = "red",
                linetype="dashed", linewidth=0.5)+
     theme_bw()+
@@ -320,6 +345,11 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
         Brazil = col_BR),
       breaks = c("US", "Brazil")
     )+
+    scale_shape_manual(
+      name = "Country",
+      values = c(US = pt_us, Brazil = pt_br),
+      breaks = c("US", "Brazil")
+    ) +
     scale_x_discrete()+
     labs(
       title = "Annual Regional Soybean Area Planted",
@@ -348,9 +378,9 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
 
 
 (p_price_usmwbrcerr<-
-   ggplot(df_price_USMW_BRCerr, aes(x=date, y=price, color = country)) +
-   geom_line() + 
-   geom_point() +  
+   ggplot(df_price_USMW_BRCerr, aes(x=date, y=price)) +
+   geom_point(aes(color = country, shape = country), size = pt_size) +
+   geom_line(aes(color = country)) +  
    theme_bw()+
    scale_x_date(date_breaks = "1 year", date_labels = "%Y")+
    theme(axis.text.x = element_text(size = 6))+
@@ -360,12 +390,18 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
        US = col_US,
        Brazil = col_BR),
      breaks = c("US", "Brazil"))+
+  
+    scale_shape_manual(
+     name = "Country",
+     values = c(US = pt_us, Brazil = pt_br),
+     breaks = c("US", "Brazil")
+   ) +
    geom_vline(aes(xintercept = as.Date("2012-07-01")), color = "red",linetype="dashed", linewidth=0.5, alpha = 0.5)+
    labs(
      title = "Monthly Price of Soybean",
      subtitle = "Data Sources: USDA-NASS & CEPEA",
      x = "",
-     y = "Soybean Price (USD)"
+     y = "Soybean Price (USD/bu)"
    )+
    
    theme(legend.position="none")+
@@ -384,6 +420,7 @@ breaks2 <- seq(2007, 2018, 1)
 
 load("../Data_Derived/land_trans_tosoy_df.RData")
 
+# UPDATE: This now shows land conversion to pasture and to soy, with both pasture --> pasture and soy --> soy removed
 df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>% 
   filter(yr >= 2007 & yr <= 2017) %>% 
   mutate(to_level_4 = str_replace(to_level_4, "Soy Beans", "Soy"))
@@ -392,17 +429,31 @@ df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>%
     ggplot(df_trans_to_soy_BRCerr_muni, aes(x=yr, y=trans/1000000, color = to_level_4)) +
     # geom_line(color = col_BR) + 
     # geom_point(color = col_BR) +
-    geom_line() +
-    geom_point() +
+    geom_point(size = pt_size, aes(shape = to_level_4)) +
+    geom_line() + 
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
     #scale_x_continuous(breaks = breaks, labels = breaks)+
     #scale_x_continuous(breaks = seq(2000, 2017, 1), labels = seq(2000, 2017, 1))+
+    
+    scale_color_manual(
+      name = "",
+      values = c(
+        Pasture = "darkgreen",
+        Soy = "purple"),
+      breaks = c("Pasture", "Soy"))+
+    
+    scale_shape_manual(
+      name = "",
+      values = c(Pasture = 15, Soy = 23),
+      breaks = c("Pasture", "Soy")
+    ) +
+
     scale_x_continuous(breaks = breaks2, labels = labels2)+
     
     theme_bw()+  
     labs(
-      title = "Annual Cerrado Land Conversion to Soy",
+      title = "Annual Cerrado Land Conversion to Pasture or Soy",
       subtitle = "Data Source: Aggregated from municipality-level MapBiomas",
       x = "",
       y = "Land Conversion (Mha)"
@@ -429,7 +480,7 @@ df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr
     ggplot(df_trans_to_classes_BRCerr_muni, 
            aes(x=yr, y=trans/1000000)) +
     geom_line(color = col_BR) + 
-    geom_point(color = col_BR) +
+    geom_point(color = col_BR, size = pt_size) +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
     theme_bw()+  
@@ -453,7 +504,7 @@ df_trans_deforest <- read.csv("../Data_Source/Terrabrasilis_CerradoDeforestation
 (p_trans_deforest <-
     ggplot(df_trans_deforest, aes(x=year, y=area_km2)) +
     geom_line(color = col_BR) + 
-    geom_point(color = col_BR) +
+    geom_point(color = col_BR, size = pt_size) +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
     #scale_x_continuous(breaks = seq(2000, 2022, 2), labels = seq(2000, 2022, 2))+
@@ -477,7 +528,7 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 (p_trans_deforest2 <-
     ggplot(df_trans_deforest, aes(x=year, y=area_km2)) +
     geom_line(color = col_BR) + 
-    geom_point(color = col_BR) +
+    geom_point(color = col_BR, size = pt_size) +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
     #scale_x_continuous(breaks = breaks, labels = breaks)+
@@ -503,25 +554,20 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 library(patchwork)
 
 # option to add other stats here
-p1 <- 
-  p_prod_regional + theme(legend.position = "none") +
-  p_prod_national + theme(legend.position = "none")+
-  
-  p_yield_usmwbrcerr + theme(legend.position = "none")+ 
+#p1 <- 
+  (p_prod_regional + theme(legend.position = "none") + theme_text_sizes) +
+  (p_prod_national + theme(legend.position = "none")+ theme_text_sizes) +
+  (p_yield_usmwbrcerr + theme(legend.position = "none")+ theme_text_sizes) +
   #p_yield_usbr +
-  
-  p_price_usmwbrcerr + theme(legend.position = "none")+  
- 
-  p_exportqty_usbr_toworld + theme(legend.position = "none")+ 
-  
+  (p_price_usmwbrcerr + theme(legend.position = "none")+  theme_text_sizes) +
+  (p_exportqty_usbr_toworld + theme(legend.position = "none")+ theme_text_sizes) +
   #p_area_p_regional+
-  p_area_h_regional+ theme(legend.position = "none")+
-  
+  (p_area_h_regional+ theme(legend.position = "none")+theme_text_sizes) +
   #p_exportvalue_usbr_toworld + 
   #p_exportvalue_usbr_tochina + 
-  
-  p_trans_deforest2 + theme(legend.position = "none")+ 
-  p_trans_tosoy + theme(legend.title = element_blank())
+  (p_trans_deforest2 + theme(legend.position = "none")+ theme_text_sizes) +
+  (p_trans_tosoy + theme(legend.title = element_blank()) + theme_text_sizes + 
+     theme(legend.text = element_text(size = 12), legend.title = element_blank()))
 
 p1
 
@@ -549,13 +595,15 @@ theme_text_sizes <- theme(
   axis.text.y = element_text(size = 14),  
 
   # Set legend size
-  legend.text = element_text(size = 15),
-  legend.title = element_text(size = 15)
+  #legend.text = element_text(size = 15),
+  #legend.title = element_text(size = 15)
+  legend.text = element_blank()
 ) 
 
 p2 <- p1 +
   #plot_layout(nrow = 4, guides = "collect") & 
-  plot_layout(nrow = 4) #& 
+  plot_layout(nrow = 4)#+
+  #theme_text_sizes#& 
   #theme(legend.position = 'bottom') &
   #theme(legend.position = 'none') &
   #theme_text_sizes 
@@ -564,8 +612,8 @@ p2 <- p2 +
   plot_annotation(tag_levels = 'A') +     
   theme(plot.tag = element_text(size = 18))
 
-p2
+#p2
 
-ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v8.png",
-       p2, height = 16, width = 20, 
+ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v9.png",
+       p2, height = 15, width = 18, 
        dpi = 300)  
