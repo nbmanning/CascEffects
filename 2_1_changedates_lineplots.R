@@ -32,11 +32,14 @@ library(terra)
 breaks <- c(2007, 2012, 2017)
 col_US = "salmon"
 col_BR = "cornflowerblue"
+
+col_US = "darkorange"
+col_BR = "steelblue"
 col_pas = "purple"
 col_soy = "green"
 pt_us = 17 # triangle
 pt_br = 16 # circle
-pt_size = 2
+pt_size = 4
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -60,19 +63,6 @@ F_add_marketyear <- function(df, year_col, area_col){
 
 load("../Data_Derived/prod_price_area_yield_exports.RData")
 
-theme_text_sizes <- theme(
-  # Set size and style for the title
-  plot.title = element_text(size = 16),  
-  
-  # Set size for x-axis text
-  axis.title.x = element_text(size = 12),
-  axis.text.x = element_text(size = 12),  
-  
-  # Set size for y-axis text
-  axis.title.y = element_text(size = 12),
-  axis.text.y = element_text(size = 12)  
-  #plot.title = element_text(size = 16, face = "bold", hjust = 0.5)  # Set size and style for the title
-  ) 
 
 ## 1.0 : Create Plotting Function --------
 F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axis_title) {
@@ -129,13 +119,13 @@ df2_prod_USMW_BRCerr <- F_add_marketyear(df_prod_USMW_BRCerr, yr, country)
 df2_prod_USBR <- F_add_marketyear(df_prod_USBR, yr, country)
 
 
-y_upper <- max(df2_prod_USBR$prod)
-y_lower <- min(df2_prod_USMW_BRCerr$prod)
+y_upper <- max(df2_prod_USBR$prod/1000000)
+y_lower <- min(df2_prod_USMW_BRCerr$prod/1000000)
 y_limits <- range(y_lower, y_upper)
 
 # plot 
 (p_prod_regional <-
-    ggplot(df2_prod_USMW_BRCerr, aes(x = harvest_marketyr, y = prod, group = country)) +
+    ggplot(df2_prod_USMW_BRCerr, aes(x = harvest_marketyr, y = prod/1000000, group = country)) +
     geom_point(aes(color = country, shape = country), size = pt_size) +
     geom_line(aes(color = country)) + 
     ylim(y_limits) + # use NA for lower limits
@@ -158,7 +148,7 @@ y_limits <- range(y_lower, y_upper)
       title = "Annual Regional Soybean Production",
       subtitle = "Data Sources: USDA-NASS & SIDRA",
       x = "",
-      y = "Production (mt)"
+      y = "Regional Production (Mmt)"
     ) +
     
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))  # keep legend on one plot for the final graph
@@ -171,7 +161,7 @@ y_limits <- range(y_lower, y_upper)
 
 # Plotted manually so we can compare axes more easily
 (p_prod_national <- 
-    ggplot(df2_prod_USBR, aes(x=harvest_marketyr, y=prod, group = country)) +
+    ggplot(df2_prod_USBR, aes(x=harvest_marketyr, y=prod/1000000, group = country)) +
    geom_point(aes(color = country, shape = country), size = pt_size) +
    geom_line(aes(color = country)) + 
     ylim(y_limits) +  # Use NA for the lower limit
@@ -196,7 +186,7 @@ y_limits <- range(y_lower, y_upper)
       title = "Annual National Soybean Production",
       subtitle = "Data Sources: USDA-NASS & SIDRA",
       x = "",
-      y = "Production (mt)"
+      y = "National Production (Mmt)"
     )+
    
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
@@ -252,10 +242,10 @@ exports2_usbr <- F_add_marketyear(exports_usbr, Year, Area)
 # plot
 (p_exportqty_usbr_toworld <- F_plot_harvestMY(
   df = exports2_usbr, 
-  x_var = harvest_marketyr, y_var = Value, group_var = Area,
+  x_var = harvest_marketyr, y_var = Value/1000000, group_var = Area,
   title = "Annual Soybean Export Quantity to World",
-  subtitle = "Data Source: UN Comtrade",
-  y_axis_title = "Quantity (kg)"
+  subtitle = "Data Source: FAOSTAT",
+  y_axis_title = "Quantity (Mmt)"
 ))
 
 
@@ -267,10 +257,10 @@ df2_yield_USBR <- F_add_marketyear(df_yield_USBR, yr, country)
 # plot
 (p_yield_usbr <- F_plot_harvestMY(
   df = df2_yield_USBR, 
-  x_var = harvest_marketyr, y_var = yield, group_var = country,
+  x_var = harvest_marketyr, y_var = yield/1000, group_var = country,
   title = "Annual National Soybean Yield",
   subtitle = "Data Sources: USDA-NASS & SIDRA",
-  y_axis_title = "Soybean Yield (kg/ha)"
+  y_axis_title = "Soybean Yield (1000 kg/ha)"
 ))
 
 
@@ -280,10 +270,10 @@ df2_yield_USMW_BRCerr <- F_add_marketyear(df_yield_USMW_BRCerr, yr, country)
 # plot
 (p_yield_usmwbrcerr <- F_plot_harvestMY(
   df = df2_yield_USMW_BRCerr, 
-  x_var = harvest_marketyr, y_var = yield, group_var = country,
+  x_var = harvest_marketyr, y_var = yield/1000, group_var = country,
   title = "Annual Regional Soybean Yield",
   subtitle = "Data Sources: USDA-NASS & SIDRA",
-  y_axis_title = "Soybean Yield (kg/ha)"
+  y_axis_title = "Soybean Yield (1000 kg/ha)"
 ))
 
 
@@ -296,7 +286,7 @@ df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
 
 # plot
 (p_area_h_regional <- 
-    ggplot(df2_area_h_USMW_BRCerr, aes(x=harvest_marketyr, y=area_harvested, group = country)) +
+    ggplot(df2_area_h_USMW_BRCerr, aes(x=harvest_marketyr, y=area_harvested/1000000, group = country)) +
     geom_point(aes(color = country, shape = country), size = pt_size) +
     geom_line(aes(color = country)) + 
     geom_vline(aes(xintercept = "2012-2013"), color = "red",
@@ -319,7 +309,7 @@ df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
       title = "Annual Regional Soybean Area Harvested",
       subtitle = "Data Sources: USDA-NASS & SIDRA",
       x = "",
-      y = "Area (ha)"
+      y = "Area (Mha)"
     )+
     
     theme(legend.position="none")+
@@ -332,7 +322,7 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
 
 # plot
 (p_area_p_regional <- 
-    ggplot(df2_area_p_USMW_BRCerr, aes(x=harvest_marketyr, y=area_planted, group = country)) +
+    ggplot(df2_area_p_USMW_BRCerr, aes(x=harvest_marketyr, y=area_planted/1000000, group = country)) +
     geom_point(aes(color = country, shape = country), size = pt_size) +
     geom_line(aes(color = country)) + 
     geom_vline(aes(xintercept = "2012-2013"), color = "red",
@@ -355,7 +345,7 @@ df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
       title = "Annual Regional Soybean Area Planted",
       subtitle = "Data Sources: USDA-NASS & SIDRA",
       x = "",
-      y = "Area (ha)"
+      y = "Area (Mha)"
     )+
     
     theme(legend.position="none")+
@@ -553,70 +543,67 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 # 3: Arrange Plots ------------
 library(patchwork)
 
+theme_text_sizes <- theme(
+  # Set size and style for the title
+  #plot.title = element_text(size = 16),
+  plot.title = element_blank(),
+  plot.subtitle = element_blank(),
+  
+  # Set size for x-axis text
+  axis.title.x = element_text(size = 12),
+  axis.text.x = element_text(size = 15),  
+  
+  # Set size for y-axis text
+  axis.title.y = element_text(size = 18),
+  axis.text.y = element_text(size = 15)  
+  #plot.title = element_text(size = 16, face = "bold", hjust = 0.5)  # Set size and style for the title
+) 
+
 # option to add other stats here
 p1 <- 
-  (p_yield_usmwbrcerr + theme(legend.position = "none")+ theme_text_sizes) +
+  (p_yield_usmwbrcerr + theme(legend.position = "none")+ theme_text_sizes) + plot_spacer() +
   (p_prod_regional + theme(legend.position = "none") + theme_text_sizes) +
-  (p_prod_national + theme(legend.position = "none")+ theme_text_sizes) +
+  (p_prod_national + theme(legend.position = "none")+ theme_text_sizes) + plot_spacer() +
   #p_yield_usbr +
   (p_price_usmwbrcerr + theme(legend.position = "none")+  theme_text_sizes) +
-  (p_exportqty_usbr_toworld + theme(legend.position = "none")+ theme_text_sizes) +
+  (p_exportqty_usbr_toworld + theme(legend.position = "none")+ theme_text_sizes) + plot_spacer() +
   #p_area_p_regional+
   (p_area_h_regional+ theme(legend.position = "none")+theme_text_sizes) +
   #p_exportvalue_usbr_toworld + 
   #p_exportvalue_usbr_tochina + 
-  (p_trans_deforest2 + theme(legend.position = "none")+ theme_text_sizes) +
+  (p_trans_deforest2 + theme(legend.position = "none")+ theme_text_sizes) + plot_spacer() +
   (p_trans_tosoy + theme(legend.title = element_blank()) + theme_text_sizes + 
      theme(legend.text = element_text(size = 12), legend.title = element_blank()))
 
-p1
+#p1
 
-
-####
-
-# manually extract one legend to add to plot since it keeps duplicating
-# library(cowplot)
-# legend <- cowplot::get_legend(p_prod_national + theme(legend.position = "bottom"))
-# combined_plot <- cowplot::plot_grid(
-#   p_prod_regional + theme(legend.position = "none"),
-#   p_prod_national + theme(legend.position = "none"),
-#   legend,
-#   ncol = 1,
-#   rel_heights = c(1, 1, 0.1)
-# )
-
-theme_text_sizes <- theme(
-  # Set size and style for the title
-  plot.title = element_text(size = 18),
-  plot.subtitle = element_text(size = 15),
-  
-  # Set size for x-axis text
-  axis.text.x = element_text(size = 13),  
-  
-  # Set size for y-axis text
-  axis.title.y = element_text(size = 14),
-  axis.text.y = element_text(size = 14),  
-
-  # Set legend size
-  #legend.text = element_text(size = 15),
-  #legend.title = element_text(size = 15)
-  legend.text = element_blank()
-) 
-
+# re-arrange plots
 p2 <- p1 +
   #plot_layout(nrow = 4, guides = "collect") & 
-  plot_layout(nrow = 4)#+
-  #theme_text_sizes#& 
+  plot_layout(nrow = 4, widths = c(1, 0.2, 1))#+
+  #theme(legend.position = "none", plot.title = element_blank())#& 
   #theme(legend.position = 'bottom') &
   #theme(legend.position = 'none') &
-  #theme_text_sizes 
+  #theme(legend.position = "none", plot.title = element_blank()) 
 
+# add tags
 p2 <- p2 + 
-  plot_annotation(tag_levels = 'a') +     
-  theme(plot.tag = element_text(size = 18))
+  plot_annotation(tag_levels = 'a') & 
+  theme(plot.tag = element_text(size = 40))
 
-#p2
+#test
+p2
 
-ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v10.png",
-       p2, height = 15, width = 18, 
+# save 
+ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v13.png",
+       p2, height = 21, width = 18, 
        dpi = 300)  
+
+# print just one legend for easy copy/paste
+p_price_usmwbrcerr + 
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(size = 24),
+    legend.text = element_text(size = 24))
+
+    
