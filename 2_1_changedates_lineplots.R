@@ -555,9 +555,9 @@ library(patchwork)
 
 # option to add other stats here
 p1 <- 
+  (p_yield_usmwbrcerr + theme(legend.position = "none")+ theme_text_sizes) +
   (p_prod_regional + theme(legend.position = "none") + theme_text_sizes) +
   (p_prod_national + theme(legend.position = "none")+ theme_text_sizes) +
-  (p_yield_usmwbrcerr + theme(legend.position = "none")+ theme_text_sizes) +
   #p_yield_usbr +
   (p_price_usmwbrcerr + theme(legend.position = "none")+  theme_text_sizes) +
   (p_exportqty_usbr_toworld + theme(legend.position = "none")+ theme_text_sizes) +
@@ -612,7 +612,7 @@ p2 <- p1 +
   #theme_text_sizes 
 
 p2 <- p2 + 
-  plot_annotation(tag_levels = 'A') +     
+  plot_annotation(tag_levels = 'a') +     
   theme(plot.tag = element_text(size = 18))
 
 #p2
