@@ -171,65 +171,6 @@ df_br_all_to_soy_nocerr <- df %>%
 result_br_all_nocerr <- F_calc_change_per_year(df_br_all_to_soy_nocerr) %>% mutate(desc = "Brazil (Excl. Cerrado) All-to-Soy")  
 
 
-#####
-# df_in should be summarized to the filtering and spatial extent that we want
-df_summ <- df_br_all_to_soy_nocerr %>%
-  # calculate sum of transition
-  summarize(total_trans = sum(ha)) %>% 
-  filter(year %in% yr_range) %>%  
-  as.data.frame()
-
-## Calculate change between years 
-df_diff <- df_summ %>% 
-  arrange(year) %>% 
-  mutate(
-    # Difference = 2013 - 2012 per category
-    diff =  round(total_trans - lag(total_trans), 1),
-    # Pct Difference = ((2013-2012)/2012)*100 per category
-    diffpct = round(((total_trans - lag(total_trans))/lag(total_trans))*100, 1)
-  )
-
-
-## Calculate change per 5-Year Average 
-# Calc Differences from 2013 to 5-year average
-df_5yravg_20082012 <- df_summ %>% 
-  filter(year < 2013 & year >= 2008) %>% # SHOULD THIS BE <= 2013???? 
-  #group_by(year) %>% # THIS WAS THE PROBLEM!!! I was grouping by year so the mean was only calculated for the 2011-2012 inteveral (mean of just one value rather than the mean of all the previous 5 years)
-  na.omit() %>%
-  summarise(avg_prev5yr_trans = mean(total_trans)) %>% #PROBLEM! This is only getting the mean of the 2012 value, not the mean of the entire dataset
-  #filter(year == 2012) %>%
-  select(avg_prev5yr_trans) %>% 
-  as.numeric()
-
-# bring these together into one variable for easy export
-df_result <- df_diff %>% 
-  # first, filter our full from-to variable to just 2013
-  filter(year == 2013) %>% 
-  
-  # then, rename all of the relevant columns
-  # note that 20122013 means the difference between the transition totals between these years
-  # i.e. 2012 is the transitions between 2011-2012 and 2013 is the transitions between 2012-2013 and the diff is the difference between these two 
-  rename(total_trans_2013 = total_trans,
-         diff_20122013 = diff,
-         diff_20122013_pct = diffpct) %>% 
-  
-  # then, add in our 5 year prior averages
-  # this is the avg. transition from 2008 (i.e. 2007-2008) to 2012 (i.e. 2011-2012)
-  mutate(avg_prev5yr_trans = df_5yravg_20082012) %>%
-  
-  #then, calculate 5 yr differences and percentages
-  mutate(
-    diff_5yr = total_trans_2013 - avg_prev5yr_trans,
-    dff_5yr_pct = ((total_trans_2013 - avg_prev5yr_trans) / avg_prev5yr_trans) * 100
-  ) %>% 
-  ungroup() %>% 
-  select(-year) %>% 
-  # round to nearest whole number
-  mutate_if(is.numeric, round) %>% 
-  # rename to_level_4 to match the later "fromto" column
-  rename(fromto = to_level_4)
-#######
-
 ## 2.2 Brazil (whole) -------
 # all classes to soybean for Brazil
 df_br_all_to_soy <- df %>%
