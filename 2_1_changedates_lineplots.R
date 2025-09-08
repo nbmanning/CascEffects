@@ -245,7 +245,7 @@ exports2_usbr <- F_add_marketyear(exports_usbr, Year, Area)
   x_var = harvest_marketyr, y_var = Value/1000000, group_var = Area,
   title = "Annual Soybean Export Quantity to World",
   subtitle = "Data Source: FAOSTAT",
-  y_axis_title = "Quantity (Mmt)"
+  y_axis_title = "Export Quantity (Mmt)"
 ))
 
 
@@ -309,7 +309,7 @@ df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
       title = "Annual Regional Soybean Area Harvested",
       subtitle = "Data Sources: USDA-NASS & SIDRA",
       x = "",
-      y = "Area (Mha)"
+      y = "Regional Area Harvested (Mha)"
     )+
     
     theme(legend.position="none")+
