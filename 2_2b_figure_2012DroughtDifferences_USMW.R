@@ -1,4 +1,6 @@
-# Title: 2_3_Clean_Figure_2012DroughtDifferences_USMW.R
+# Section 00: Script Details ----------------
+
+# Title: 2_2b_Clean_Figure_2012DroughtDifferences_USMW.R
 # Author: Nick Manning
 # Purpose: Import US yield, production, and area harvested data from USDA and
 # do some EDA and mapping to determine the best way to display this data
@@ -41,6 +43,7 @@ library(fiftystater) # for us state map; note: had to install from GitHub for my
 library(RColorBrewer)
 library(classInt) # for mapping and setting breaks 
 library(reshape2)
+library(patchwork)
 
 ### Constants ###
 
@@ -48,7 +51,7 @@ library(reshape2)
 usda_key <- "34BD2DD3-9049-37A1-BC2C-D8A967E25E42"
 
 ## paths and files 
-file_path <- "../Data_Source/"
+folder_source <- "../Data_Source/"
 
 ## states of interest 
 mw_st_abv <- c("ND", "SD", "NE","KS", "MO", "IA", "MN", "WI", "IL", "IN", "OH", "MI")
@@ -59,13 +62,13 @@ mw_st_full = c("NORTH DAKOTA", "SOUTH DAKOTA", "NEBRASKA", "KANSAS", "MISSOURI",
 mw_st_tigris <- str_to_title(mw_st_full)
 
 
-# 1: USDA Data from Iman -----------------------------------
+# 1: USDA Yield Data -----------------------------------
 
 ## 1.1: Import and Tidy Data ---------------------
 
 # import data
 getwd()
-df_raw <- read.csv(paste0(file_path, "USyieldData.csv"))
+df_raw <- read.csv(paste0(folder_source, "USyieldData.csv"))
 df <- df_raw
 
 # explore data
@@ -170,9 +173,9 @@ df2_yr <- df2 %>% filter(year == yr_one)
 df2_range <- df2 %>% filter(year %in% yr_range)
 
 
-## 1.4: Plot Changes from 2011-2012 in corn, soy, corn/soy --------
+## 1.5: Plot Changes from 2011-2012 in corn, soy, corn/soy --------
 
-### 1.4.1 Calculate Changes ----
+### 1.5.1 Calculate Changes ----
 df_diff <- df2_range %>% 
   group_by(state, name) %>%
   mutate(
@@ -251,15 +254,17 @@ F_plot_gg_diffpct <- function(data, var, yr){
 (p_soy_prod <- F_plot_gg_diffpct(df_diff, "soyDiffPctProduction", yr_one))
 
 # 2: Arrange Plots ------------
-library(patchwork)
 
 # Plot on a grid - add legend after as three have NA's
 p1 <- p_soy_yield + p_soy_prod #+ p_corn_yield + p_corn_prod
 
-p2 <- p1 + plot_annotation(tag_levels = 'A') +
-  plot_layout(nrow = 2, guides = "collect") & 
-  theme(legend.position = "none") 
+p2 <- p1 + plot_annotation(tag_levels = 'a', ) & 
+  theme(plot.tag = element_text(size = 20)) 
 
+p2 <- p2 +
+  plot_layout(nrow = 2, guides = "collect") & 
+  theme(legend.position = "none",
+        plot.title = element_blank()) 
 p2
 
 ggsave(filename = "../Figures/USMW_CountyDiffs/USMW_Change_Soy_nolegend.png",
