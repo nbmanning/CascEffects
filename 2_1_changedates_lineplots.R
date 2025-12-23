@@ -414,10 +414,7 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
     geom_point(color = col_BR, size = pt_size) +
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
-    #scale_x_continuous(breaks = breaks, labels = breaks)+
     scale_x_continuous(breaks = seq(2000, 2017, 1), labels = seq(2000, 2017, 1))+
-    #scale_x_continuous(breaks = breaks2, labels = labels2)+
-    
     theme_bw()+  
     labs(
       title = "Annual Cerrado Deforestation",
