@@ -764,7 +764,7 @@ names(df)
 # gather to make into a long dataset; change the number if you changed 'select' above
 ncol(df)
 df <- gather(df,"year","ha",9:ncol(df))     
-df2 <- df2 %>% filter(municipality == "Alta Floresta D'Oeste")
+#df2 <- df2 %>% filter(municipality == "Alta Floresta D'Oeste")
 
 # Save 
 save(df, file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
@@ -825,7 +825,7 @@ str(trans_tosoy_BR)
 # keep only consecutive start/end years
 # this means that 2013 captures the 2012-13 harvest year in BR 
 trans_tosoy_BR <- trans_tosoy_BR %>% 
-  filter(end_year == start_year+1) %>% 
+  #filter(end_year == start_year+1) %>% 
   filter(to_level_4 != from_level_4) %>% 
   select("year", "end_year","start_year","state","municipality",
          #"municipality_code",
