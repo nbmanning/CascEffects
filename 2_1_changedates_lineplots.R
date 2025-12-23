@@ -1,5 +1,3 @@
-# (For Chapter 2 of Thesis & Casc Effects Paper)
-
 # title: 2_1_changedates_lineplots.R
 # author: Nick Manning
 # purpose: Import the data from 1_data_import_clean.R and change the years to
@@ -12,11 +10,14 @@
 # Stat = 2012, Brazil HMY = 2011-2012, USA HMY = 2012-2013) 
 
 # Created: Feb 2024
-# Last Updated: Feb 2025
+# Last Updated: Dec 2025
 
-# Working Notes:
-## 3/4/24: Currently working to remove the duplicate legends and clean the 
-## script by creating a function to plot the harvest + MY data
+# REQUIRES:
+## "../Data_Derived/prod_price_area_yield_exports.RData" from 1_data_import_clean.R
+## "../Data_Source/FAOSTAT_BrUS_2000_2020_ExportQuantity.csv" from Data_Source folder
+## "../Data_Derived/land_trans_tosoy_df.RData" from 0_GetMircoMeso_in_Cerrado.R
+## "../Data_Derived/land_trans_toclasses_df.RData" from 0_GetMircoMeso_in_Cerrado.R
+## "../Data_Source/Terrabrasilis_CerradoDeforestation.csv" from Data_Source folder - TerraBrasilis
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -27,14 +28,13 @@ getwd()
 library(tidyverse)
 library(stringr)
 library(terra)
+library(patchwork)
 
 
 breaks <- c(2007, 2012, 2017)
-col_US = "salmon"
-col_BR = "cornflowerblue"
 
 col_US = "darkorange"
-col_BR = "steelblue"
+col_BR = "darkblue"
 col_pas = "purple"
 col_soy = "green"
 pt_us = 17 # triangle
@@ -103,13 +103,6 @@ F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axi
     )
 }
 
-# (p2_prod_national <- F_plot_harvestMY(
-#   df = df2_prod_USBR, x_var = harvest_marketyr, y_var = prod, group_var = country,
-#   title = "Annual National Soybean Production",
-#   subtitle = "Data Sources: USDA-NASS & SIDRA",
-#   y_axis_title = "Production (mt)"
-# ))
-
 
 ## 1.1: Production --------
 
@@ -148,7 +141,7 @@ y_limits <- range(y_lower, y_upper)
       title = "Annual Regional Soybean Production",
       subtitle = "Data Sources: USDA-NASS & SIDRA",
       x = "",
-      y = "Regional Production (Mmt)"
+      y = "Reg. Production (Mmt)"
     ) +
     
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))  # keep legend on one plot for the final graph
@@ -174,7 +167,6 @@ y_limits <- range(y_lower, y_upper)
         US = col_US,
         Brazil = col_BR),
       breaks = c("US", "Brazil"),
-      #labels = c("US-MW", "Cerrado")
     )+
    scale_shape_manual(
      name = "Country",
@@ -186,54 +178,24 @@ y_limits <- range(y_lower, y_upper)
       title = "Annual National Soybean Production",
       subtitle = "Data Sources: USDA-NASS & SIDRA",
       x = "",
-      y = "National Production (Mmt)"
+      y = "Natl. Production (Mmt)"
     )+
    
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)#,
-          # keep legend on one plot for the final graph
-          #legend.position = "none"
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)
     )
 )
 
 
 ## 1.2: Exports -------
 
-### 1.2.1: Export Value (US/BR --> China) --------
-
-# add Harvest + Market Year Variable
-df2_exports_USBR_china <- F_add_marketyear(df_exports_USBR_china, Period, ReporterDesc)
-
-# plot
-(p_exportvalue_usbr_tochina <- F_plot_harvestMY(
-  df = df2_exports_USBR_china, 
-  x_var = harvest_marketyr, y_var = PrimaryValue, group_var = ReporterDesc,
-  title = "Annual Soybean Export Value to China",
-  subtitle = "Data Sources: UN Comtrade",
-  y_axis_title = "Export Value (USD)"
-))
-
-
-### 1.2.1: Export Value (US/BR --> World) --------
-# add Harvest + Market Year Variable
-df2_exports_USBR_world <- F_add_marketyear(df_exports_USBR_world, Period, ReporterDesc)
-
-# plot
-(p_exportvalue_usbr_toworld <- F_plot_harvestMY(
-  df = df2_exports_USBR_world, 
-  x_var = harvest_marketyr, y_var = PrimaryValue, group_var = ReporterDesc,
-  title = "Annual Soybean Export Value to World",
-  subtitle = "Data Sources: UN Comtrade",
-  y_axis_title = "Export Value (USD)"
-))
-
-
-### 1.2.2: Export Quantity (World) -------
-# import
+### 1.2.1: Export Quantity (World) -------
+# import csv of export quantities from FAOSTAT
 exports_usbr <-read.csv("../Data_Source/FAOSTAT_BrUS_2000_2020_ExportQuantity.csv")
 exports_usbr<- exports_usbr %>% 
   select(Area, Year, Element, Value) %>% 
   filter(Year >= 2007 & Year <= 2017)
 
+# change to USA for consistency
 exports_usbr$Area <- str_replace(exports_usbr$Area, "United States of America", "US")
 
 # add MY
@@ -245,26 +207,13 @@ exports2_usbr <- F_add_marketyear(exports_usbr, Year, Area)
   x_var = harvest_marketyr, y_var = Value/1000000, group_var = Area,
   title = "Annual Soybean Export Quantity to World",
   subtitle = "Data Source: FAOSTAT",
-  y_axis_title = "Export Quantity (Mmt)"
+  y_axis_title = "Natl. Export Quantity (Mmt)"
 ))
 
 
 ## 1.3: Yield -------
 
-### 1.3.1: National Yield ------
-df2_yield_USBR <- F_add_marketyear(df_yield_USBR, yr, country)
-
-# plot
-(p_yield_usbr <- F_plot_harvestMY(
-  df = df2_yield_USBR, 
-  x_var = harvest_marketyr, y_var = yield/1000, group_var = country,
-  title = "Annual National Soybean Yield",
-  subtitle = "Data Sources: USDA-NASS & SIDRA",
-  y_axis_title = "Soybean Yield (1000 kg/ha)"
-))
-
-
-### 1.3.2 Regional Yield ------
+### 1.3.1 Regional Yield ------
 df2_yield_USMW_BRCerr <- F_add_marketyear(df_yield_USMW_BRCerr, yr, country)
 
 # plot
@@ -273,7 +222,7 @@ df2_yield_USMW_BRCerr <- F_add_marketyear(df_yield_USMW_BRCerr, yr, country)
   x_var = harvest_marketyr, y_var = yield/1000, group_var = country,
   title = "Annual Regional Soybean Yield",
   subtitle = "Data Sources: USDA-NASS & SIDRA",
-  y_axis_title = "Soybean Yield (1000 kg/ha)"
+  y_axis_title = "Reg. Soybean Yield (1000 kg/ha)"
 ))
 
 
@@ -309,7 +258,7 @@ df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
       title = "Annual Regional Soybean Area Harvested",
       subtitle = "Data Sources: USDA-NASS & SIDRA",
       x = "",
-      y = "Regional Area Harvested (Mha)"
+      y = "Reg. Area Harvested (Mha)"
     )+
     
     theme(legend.position="none")+
@@ -317,56 +266,12 @@ df2_area_h_USMW_BRCerr <- F_add_marketyear(df_area_h_USMW_BRCerr, yr, country)
     )
 )
 
-### 1.4.2 Area Planted -----------
-df2_area_p_USMW_BRCerr <- F_add_marketyear(df_area_p_USMW_BRCerr, yr, country)
 
-# plot
-(p_area_p_regional <- 
-    ggplot(df2_area_p_USMW_BRCerr, aes(x=harvest_marketyr, y=area_planted/1000000, group = country)) +
-    geom_point(aes(color = country, shape = country), size = pt_size) +
-    geom_line(aes(color = country)) + 
-    geom_vline(aes(xintercept = "2012-2013"), color = "red",
-               linetype="dashed", linewidth=0.5)+
-    theme_bw()+
-    scale_color_manual(
-      name = "Country",
-      values = c(
-        US = col_US,
-        Brazil = col_BR),
-      breaks = c("US", "Brazil")
-    )+
-    scale_shape_manual(
-      name = "Country",
-      values = c(US = pt_us, Brazil = pt_br),
-      breaks = c("US", "Brazil")
-    ) +
-    scale_x_discrete()+
-    labs(
-      title = "Annual Regional Soybean Area Planted",
-      subtitle = "Data Sources: USDA-NASS & SIDRA",
-      x = "",
-      y = "Area (Mha)"
-    )+
-    
-    theme(legend.position="none")+
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)
-    )
-)
-
-# 2: UNCHANGED DATA --------------------------------
+# 2: DATA NOT RELIANT ON AGRICULTURAL YEAR --------------------------------
 
 ## 2.1: Market Price -----
 
 # plot 
-# (p_yield_usmwbrcerr <- F_plot_harvestMY(
-#   df = df2_yield_USMW_BRCerr, 
-#   x_var = harvest_marketyr, y_var = yield, group_var = country,
-#   title = "Annual Regional Soybean Yield",
-#   subtitle = "Data Sources: USDA-NASS & SIDRA",
-#   y_axis_title = "Soybean Yield (kg/ha)"
-# ))
-
-
 (p_price_usmwbrcerr<-
    ggplot(df_price_USMW_BRCerr, aes(x=date, y=price)) +
    geom_point(aes(color = country, shape = country), size = pt_size) +
@@ -410,21 +315,18 @@ breaks2 <- seq(2007, 2018, 1)
 
 load("../Data_Derived/land_trans_tosoy_df.RData")
 
-# UPDATE: This now shows land conversion to pasture and to soy, with both pasture --> pasture and soy --> soy removed
+# filter to timae frame
 df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>% 
   filter(yr >= 2007 & yr <= 2017) %>% 
   mutate(to_level_4 = str_replace(to_level_4, "Soy Beans", "Soy"))
 
+# plot
 (p_trans_tosoy <-
     ggplot(df_trans_to_soy_BRCerr_muni, aes(x=yr, y=trans/1000000, color = to_level_4)) +
-    # geom_line(color = col_BR) + 
-    # geom_point(color = col_BR) +
     geom_point(size = pt_size, aes(shape = to_level_4)) +
     geom_line() + 
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
-    #scale_x_continuous(breaks = breaks, labels = breaks)+
-    #scale_x_continuous(breaks = seq(2000, 2017, 1), labels = seq(2000, 2017, 1))+
     
     scale_color_manual(
       name = "",
@@ -446,10 +348,8 @@ df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>%
       title = "Annual Cerrado Land Conversion to Pasture or Soy",
       subtitle = "Data Source: Aggregated from municipality-level MapBiomas",
       x = "",
-      y = "Land Conversion (Mha)"
+      y = "Cerrado Land Conversion (Mha)"
     )+
-    
-    # theme(legend.position="none")+
     theme(legend.position= c(0.9, 0.4), legend.title = element_blank())+
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
 
@@ -463,9 +363,10 @@ load("../Data_Derived/land_trans_toclasses_df.RData")
 # "Sugar Cane", "Other Non Vegetated Area", "Coffee" ("Coffe"),
 # "Other Non Forest Natural Formation", "Citrus", and "Rice"
 
-
+# filter to time frame
 df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr >= 2007 & yr <= 2017)
 
+# plot
 (p_trans_toclasses <-
     ggplot(df_trans_to_classes_BRCerr_muni, 
            aes(x=yr, y=trans/1000000)) +
@@ -474,14 +375,13 @@ df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr
     geom_vline(aes(xintercept = br_int_yr), color = "red",
                linetype="dashed", linewidth=0.5)+
     theme_bw()+  
-    #scale_x_continuous(breaks = breaks, labels = breaks)+
     scale_x_continuous(breaks = seq(2000, 2017, 1), labels = seq(2000, 2017, 1))+
     
     labs(
       title = "Annual Cerrado Land Conversion to Soy & Other Non-Native Cover",
       subtitle = "Aggregated from municipality-level MapBiomas",
       x = "",
-      y = "Land Conversion (Mha)"
+      y = "Cerrado Land Conversion (Mha)"
     )+
     
     theme(legend.position="none")+
@@ -489,33 +389,13 @@ df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr
 )
 
 ## 2.3 TerraBrasilis Deforestation --------
-
+# import TerraBrasilis - PRODES CSV: https://terrabrasilis.dpi.inpe.br/app/dashboard/deforestation/biomes/cerrado/increments
 df_trans_deforest <- read.csv("../Data_Source/Terrabrasilis_CerradoDeforestation.csv")
-(p_trans_deforest <-
-    ggplot(df_trans_deforest, aes(x=year, y=area_km2)) +
-    geom_line(color = col_BR) + 
-    geom_point(color = col_BR, size = pt_size) +
-    geom_vline(aes(xintercept = br_int_yr), color = "red",
-               linetype="dashed", linewidth=0.5)+
-    #scale_x_continuous(breaks = seq(2000, 2022, 2), labels = seq(2000, 2022, 2))+
-    scale_x_continuous(breaks = seq(2000, 2017, 1), labels = seq(2000, 2017, 1))+
-    
-    theme_bw()+  
-    labs(
-      title = "Annual Cerrado Deforestation",
-      subtitle = "Data Source: TerraBrasilis",
-      x = "",
-      y = "Deforestation (km^2)"
-    )+
-    
-    theme(legend.position="none")+
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
-)
 
 # filter to only 2007-2017
 df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 
-(p_trans_deforest2 <-
+(p_trans_deforest <-
     ggplot(df_trans_deforest, aes(x=year, y=area_km2)) +
     geom_line(color = col_BR) + 
     geom_point(color = col_BR, size = pt_size) +
@@ -530,7 +410,7 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
       title = "Annual Cerrado Deforestation",
       subtitle = "Data Source: TerraBrasilis",
       x = "",
-      y = "Deforestation (km^2)"
+      y = "Cerrado Deforestation (km^2)"
     )+
     
     theme(legend.position="none")+
@@ -539,13 +419,11 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 
 
 
-
 # 3: Arrange Plots ------------
-library(patchwork)
 
+# Set themes
 theme_text_sizes <- theme(
   # Set size and style for the title
-  #plot.title = element_text(size = 16),
   plot.title = element_blank(),
   plot.subtitle = element_blank(),
   
@@ -556,54 +434,30 @@ theme_text_sizes <- theme(
   # Set size for y-axis text
   axis.title.y = element_text(size = 18),
   axis.text.y = element_text(size = 15)  
-  #plot.title = element_text(size = 16, face = "bold", hjust = 0.5)  # Set size and style for the title
 ) 
 
-# option to add other stats here
+# get and arrange plots with spacers (ABC where B is spacer)
 p1 <- 
   (p_yield_usmwbrcerr + theme(legend.position = "none")+ theme_text_sizes) + plot_spacer() +
   (p_prod_regional + theme(legend.position = "none") + theme_text_sizes) +
   (p_prod_national + theme(legend.position = "none")+ theme_text_sizes) + plot_spacer() +
-  #p_yield_usbr +
-  (p_price_usmwbrcerr + theme(legend.position = "none")+  theme_text_sizes) +
-  (p_exportqty_usbr_toworld + theme(legend.position = "none")+ theme_text_sizes) + plot_spacer() +
-  #p_area_p_regional+
-  (p_area_h_regional+ theme(legend.position = "none")+theme_text_sizes) +
-  #p_exportvalue_usbr_toworld + 
-  #p_exportvalue_usbr_tochina + 
-  (p_trans_deforest2 + theme(legend.position = "none")+ theme_text_sizes) + plot_spacer() +
+  (p_price_usmwbrcerr + theme(legend.position = "none")+  theme_text_sizes) + 
+  (p_area_h_regional+ theme(legend.position = "none")+theme_text_sizes) + plot_spacer() +
+  (p_exportqty_usbr_toworld + theme(legend.position = "none")+ theme_text_sizes) + 
+  (p_trans_deforest + theme(legend.position = "none")+ theme_text_sizes) + plot_spacer() +
   (p_trans_tosoy + theme(legend.title = element_blank()) + theme_text_sizes + 
      theme(legend.text = element_text(size = 12), legend.title = element_blank()))
 
-#p1
-
-# re-arrange plots
+# re-arrange plots to fit correctly with margins
 p2 <- p1 +
-  #plot_layout(nrow = 4, guides = "collect") & 
-  plot_layout(nrow = 4, widths = c(1, 0.2, 1))#+
-  #theme(legend.position = "none", plot.title = element_blank())#& 
-  #theme(legend.position = 'bottom') &
-  #theme(legend.position = 'none') &
-  #theme(legend.position = "none", plot.title = element_blank()) 
+  plot_layout(nrow = 4, widths = c(1, 0.2, 1))
 
 # add tags
 p2 <- p2 + 
   plot_annotation(tag_levels = 'a') & 
-  theme(plot.tag = element_text(size = 40))
-
-#test
-p2
+  theme(plot.tag = element_text(size = 36))
 
 # save 
-ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v13.png",
-       p2, height = 21, width = 18, 
+ggsave(filename = "../Figures/soybeanstats_harvestmarketyear_v14.png",
+       p2, height = 22, width = 19, 
        dpi = 300)  
-
-# print just one legend for easy copy/paste
-p_price_usmwbrcerr + 
-  theme(
-    legend.position = "bottom",
-    legend.title = element_text(size = 24),
-    legend.text = element_text(size = 24))
-
-    
