@@ -1,6 +1,6 @@
 # Section 00: Script Details ----------------
 
-# title: 2_1_changedates_lineplots.R
+# title: 2_Figure2_LinePlots.R
 # author: Nick Manning
 # purpose: Import the data from 1_data_import_clean.R and change the years to
 # represent the similar harvests temporally (e.g. US harvests before Brazil;
@@ -472,4 +472,3 @@ p2 <- p2 +
 ggsave(filename = paste0(path_figures, "soybeanstats_harvestmarketyear.png"),
        p2, height = 22, width = 19, 
        dpi = 300)  
-
