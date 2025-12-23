@@ -1,4 +1,6 @@
-# title: 2_2_figure2_CerradoMuniDiffs.R
+# Section 00: Script Details ----------------
+
+# title: 2_2a_figure2_CerradoMuniDiffs.R
 # author: Nick Manning
 # purpose: Get Change in Production and Value at the muncipality level 
 
@@ -6,18 +8,14 @@
 ## Use of USDA QuickStats requires a Key
 
 # Created: 3/11/24
-# Last Edited: March 2024
-
-# To-Do:
-## Add Production Value per county (can we even do this?)
-## Create IALE plots of a 1:1 plot between SG and different years
+# Last Edited: Dec 2025
 
 # # # # # # # # 
 
-# 0: Set up Env --------
+# 0: Load Libraries & Set Constants and Paths --------------
 rm(list = ls())
 
-## 0.1: Load Libraries --------
+## Load Libraries --------
 library(tidyverse) 
 library(sidrar) # download BR data
 library(geobr) # get BR shapefiles
@@ -28,8 +26,10 @@ library(sf)
 library(scico) # used for getting the midpoint at 0
 library(cowplot) # used for arranging the facet_wrap into a grid
 #library(terra) # for loading SIMPLE-G results
+library(patchwork)
 
-# 0.2: Constants -------- 
+
+## Set Constants -------- 
 getwd()
 
 #folder <- "../Data_Source/Commodities/soymaize_2010_2022_andres/"
@@ -421,7 +421,7 @@ shp_cerr_states <- read_state(
 ### 4.2.2: Create Inset Map ----
 
 (br_inset <- ggplot()+
-   geom_sf(data = shp_br, color = "gray60", fill = "transparent", lwd = 0.1)+
+   geom_sf(data = shp_br, color = "gray40", fill = "transparent", lwd = 0.1)+
    geom_sf(data = shp_br_cerr, color = "lightgreen", fill = "lightgreen", lwd = 0.5)+
    geom_sf(data = shp_cerr_states, color = "gray20", fill = "transparent", lwd = 0.2)+
    # geom_sf_text(data = shp_cerr_states %>% filter(abbrev_state != "DF"), 
@@ -431,7 +431,23 @@ shp_cerr_states <- read_state(
    theme_void()
 )
   
+ggsave("../Figures/CerradoMuni/inset.png", br_inset,
+       dpi = 300, width = 5, height = 5)
 
+### 4.2.2: Create Basic Inset Map ---------
+(br_inset_basic <- ggplot()+
+   geom_sf(data = shp_br, color = "gray40", fill = "transparent", lwd = 2.0)+
+   geom_sf(data = shp_br_cerr, color = "darkblue", fill = "darkblue", lwd = 0.5)+
+   #geom_sf(data = shp_cerr_states, color = "gray20", fill = "transparent", lwd = 0.2)+
+   # geom_sf_text(data = shp_cerr_states %>% filter(abbrev_state != "DF"), 
+   #              aes(label = abbrev_state), size = 3, color = "gray10") +  # Add state labels
+   # geom_sf_text(data = shp_cerr_states %>% filter(abbrev_state == "DF"), 
+   #              aes(label = abbrev_state), size = 1, color = "gray10") +  # Add state labels
+   theme_void()
+)
+
+ggsave("../Figures/_inset_basic.png", br_inset_basic,
+       dpi = 300, width = 5, height = 5)
 
 ## 4.3: TEST running F_calc_diff then rbind then plot in a grid -----
 
@@ -533,12 +549,11 @@ pf_area <- F_facet(t, "area_diff", units = "kha")
 #                      #labels = c("A", "B", "C"),
 #                      align = "hv")
 
-library(patchwork)
 
 # Plot on a grid - add legend after as three have NA's
 p1 <- pf_prod + pf_yield + pf_area #+ p_corn_yield + p_corn_prod
-p1 <- p1 + plot_layout(nrow = 3) + plot_annotation(tag_levels = 'A')
-
+p1 <- p1 + plot_layout(nrow = 3) + plot_annotation(tag_levels = 'a')
+p1
 ggsave(paste0("../Figures/CerradoMuni/_gg_facet_soy_yap_2013_2015_2017_2022.png"),
        plot = p1, width = 14, height = 12)
 
