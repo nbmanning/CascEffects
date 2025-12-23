@@ -1,31 +1,15 @@
 # Section 00: Script Details ----------------
 
-# Title: 2_2b_Clean_Figure_2012DroughtDifferences_USMW.R
+# Title: 2_Figure3_USMW_DroughtDiff_FigureSI1_PriceDiff.R
 # Author: Nick Manning
 # Purpose: Import US yield, production, and area harvested data from USDA and
 # do some EDA and mapping to determine the best way to display this data
 # Creation Date: 10/18/23
-# Last Updated: December 2024
-
-# Links: 
+# Last Updated: December 2025
 
 # Requires: 
 ## CSV of yield data (Data_Source\USyielddata.csv)
 
-# Steps: 
-# 0: Import Libraries & Set Constants
-
-# 1: USDA Data
-## This section imports and tidies the data, as well as produced initial maps of 
-## 2011 to 2012 change 
-
-
-# 2: Initial EDA
-## This section plots the data in ways outside of maps 
-
-
-# 3 (FUTURE): Use tidyUSDA to get data & plot (get inspo from 1_data_import.R)
-## This section grabs data from the 'tidyUSDA' package instead of importing it from an external CSV
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #  
 
@@ -365,69 +349,6 @@ df_price <- prices %>%
   )
 
 # save figure
-ggsave(paste0("../Figures/USMW_CountyDiffs/",
+ggsave(paste0("../Figures/",
               "gg_price_annual_facet.png"), 
        plot = p_price, dpi = 300)
-
-# GRAVEYARD ------------------------------
-
-# UNCOMMENT TO RUN (Highlight then CTRL+C)
-# This section contains functional code that creates plots we did not include in our manuscript but are useful 
-
-# ## G1.1: Map Single Year, Single Variable --------
-#
-# # Function for one year of interest and one variable
-# F_plot_single <- function(data, var, yr){
-#   
-#   y_var <- as.character(var)
-#   data <- data %>% filter(year == yr)
-#   
-#   p <- ggplot(data)+
-#     geom_sf(# %>% filter(year == 2010), 
-#       aes(fill = .data[[y_var]]), 
-#       #col = "lightgrey", 
-#       lwd = 0, col = NA)+
-#     theme_bw()+
-#     theme(
-#       plot.title = element_text(size=18, hjust = 0.5),
-#       legend.position="bottom", legend.box = "horizontal", 
-#     )+
-#     scale_fill_distiller(palette = "Greens", direction = 1
-#     )+
-#     labs(title = paste(yr, "US-MW", var))
-#   
-#   ggsave(paste0("../Figures/USMW_CountyDiffs/",
-#                 y_var, "_", yr,
-#                 ".png"), 
-#          plot = p)
-#   
-#   return(p)
-#   
-# }
-# 
-# ## G1.2: Apply Single Year Single Var ------
-# 
-# # change yr_choice to see Soybean Prod, Yield, AreaPlanted Maps for that year 
-# 
-# yr_choice <- 2010 
-# 
-# var_names <- c("soybeansProd",  "soybeansYield", "soybeansAreaPlanted") 
-# 
-# lapply(var_names, F_plot_single, data = df2_range, yr = yr_choice)
-# 
-# 
-# ## G2: Plot counties with available 2012 data -------
-# 
-# # plot counties w data
-# ggplot(df_diff %>% filter(year == 2012))+
-#   geom_sf(aes(fill = state), color = "gray")+
-#   geom_sf(data = states_mw, fill = NA, color = "gray11", size = 0.25)+
-#   theme_bw()+
-#   theme(legend.position="none")+
-#   labs(
-#     title = "2012 Data Availability at the County Level for US-MW"
-#   )
-# 
-# ggsave("../Figures/2012_USDANASS_Data.png",
-#        width=9, height=7)
-# 
