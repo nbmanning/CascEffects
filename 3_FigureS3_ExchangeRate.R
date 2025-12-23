@@ -1,9 +1,13 @@
-# Title: 2_4_SI_figure_USBR_ExchangeRate.R
+# Title: 3_FigureS3_ExchangeRate.R
 # Author: Nick Manning
 # Purpose: Plot US (USD) and Brazil (BR Real) Exchange Rate over time
 # Creation Date: 10/18/23
-# Last Updated: October 2023
+# Last Updated: Dec 2025
 
+# Requires:
+# "../Data_Source/ExchangeRate_1USDtoBRR_20002017.csv" from investing.com
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 # 0: Load Libraries & Constants ---------
 library(dplyr)
