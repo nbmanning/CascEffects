@@ -1,10 +1,10 @@
 # Section 00: Script Details ----------------
 
-# title: 2_xx_mapb_trans_stats.R
+# title: 3_TableS2_Stats_MapB.R
 
 # author: Nick Manning
 
-# purpose: goes along with 2_xx_mapb_trans_plots; this script loads the cleaned df and calculates changes over time for Cerrado, Brazil, and Brazil excluding Cerrado
+# purpose: goes along with 3_FigureS2_MapB_Conversion; this script loads the cleaned df and calculates changes over time for Cerrado, Brazil, and Brazil excluding Cerrado
 
 # created: Dec., 19, 2024
 # last edit date: Dec 2025
