@@ -29,7 +29,8 @@ getwd()
 # 0: Load Libraries & Set Constants and Paths ------
 
 ### Libraries ###
-library(tidyverse)
+library(ggplot2)
+library(dplyr)
 library(stringr)
 library(terra)
 library(patchwork)
@@ -112,37 +113,6 @@ F_plot_harvestMY <- function(df, x_var, y_var, group_var, title, subtitle, y_axi
       legend.position = "none"
     )
 }
-
-## Plot Example
-(ggplot(df2_prod_USMW_BRCerr, aes(x = harvest_marketyr, y = prod/1000000, group = country)) +
-    geom_point(aes(color = country, shape = country), size = pt_size) +
-    geom_line(aes(color = country)) + 
-    ylim(y_limits) + # use NA for lower limits
-    geom_vline(aes(xintercept = "2012-2013"), color = "red", linetype = "dashed", linewidth = 0.5) +
-    theme_bw() +
-    
-    scale_color_manual(
-      name = "Country",
-      values = c(US = col_US, Brazil = col_BR),
-      breaks = c("US", "Brazil")
-    ) +
-    scale_shape_manual(
-      name = "Country",
-      values = c(US = pt_us, Brazil = pt_br), # 16 = filled circle, 17 = filled triangle
-      breaks = c("US", "Brazil")
-    ) +
-    scale_x_discrete() +
-    
-    labs(
-      title = "Annual Regional Soybean Production",
-      subtitle = "Data Sources: USDA-NASS & SIDRA",
-      x = "",
-      y = "Reg. Production (Mmt)"
-    ) +
-    
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8))  # keep legend on one plot for the final graph
-  
-)
 
 ## 1.1: Production --------
 
@@ -358,10 +328,10 @@ breaks2 <- seq(2007, 2018, 1)
 
 load(paste0(path_data_derived, "land_trans_tosoy_df.RData"))
 
-# filter to timae frame
+# filter to time frame
 df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>% 
   filter(yr >= 2007 & yr <= 2017) %>% 
-  mutate(to_level_4 = str_replace(to_level_4, "Soy Beans", "Soy"))
+  mutate(to_level_4 = str_replace(to_level_4, "Soybeans", "Soy"))
 
 # plot
 (p_trans_tosoy <-
@@ -399,37 +369,37 @@ df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>%
 )
 
 ### 2.2.2: Land Conversion of Other Classes in the Cerrado --------
-load(paste0(path_data_derived, "land_trans_toclasses_df.RData"))
-
-# NOTE: Other Classes includes "Soy Beans", "Pasture",
-# "Other Temporary Crops", "Mosaic of Agriculture and Pasture",
-# "Sugar Cane", "Other Non Vegetated Area", "Coffee" ("Coffe"),
-# "Other Non Forest Natural Formation", "Citrus", and "Rice"
-
-# filter to time frame
-df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr >= 2007 & yr <= 2017)
-
-# plot
-(p_trans_toclasses <-
-    ggplot(df_trans_to_classes_BRCerr_muni, 
-           aes(x=yr, y=trans/1000000)) +
-    geom_line(color = col_BR) + 
-    geom_point(color = col_BR, size = pt_size) +
-    geom_vline(aes(xintercept = br_int_yr), color = "red",
-               linetype="dashed", linewidth=0.5)+
-    theme_bw()+  
-    scale_x_continuous(breaks = seq(2000, 2017, 1), labels = seq(2000, 2017, 1))+
-    
-    labs(
-      title = "Annual Cerrado Land Conversion to Soy & Other Non-Native Cover",
-      subtitle = "Aggregated from municipality-level MapBiomas",
-      x = "",
-      y = "Cerrado Land Conversion (Mha)"
-    )+
-    
-    theme(legend.position="none")+
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
-)
+# load(paste0(path_data_derived, "land_trans_toclasses_df.RData"))
+# 
+# # NOTE: Other Classes includes "Soy Beans", "Pasture",
+# # "Other Temporary Crops", "Mosaic of Agriculture and Pasture",
+# # "Sugar Cane", "Other Non Vegetated Area", "Coffee" ("Coffe"),
+# # "Other Non Forest Natural Formation", "Citrus", and "Rice"
+# 
+# # filter to time frame
+# df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr >= 2007 & yr <= 2017)
+# 
+# # plot
+# (p_trans_toclasses <-
+#     ggplot(df_trans_to_classes_BRCerr_muni, 
+#            aes(x=yr, y=trans/1000000)) +
+#     geom_line(color = col_BR) + 
+#     geom_point(color = col_BR, size = pt_size) +
+#     geom_vline(aes(xintercept = br_int_yr), color = "red",
+#                linetype="dashed", linewidth=0.5)+
+#     theme_bw()+  
+#     scale_x_continuous(breaks = seq(2000, 2017, 1), labels = seq(2000, 2017, 1))+
+#     
+#     labs(
+#       title = "Annual Cerrado Land Conversion to Soy & Other Non-Native Cover",
+#       subtitle = "Aggregated from municipality-level MapBiomas",
+#       x = "",
+#       y = "Cerrado Land Conversion (Mha)"
+#     )+
+#     
+#     theme(legend.position="none")+
+#     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
+# )
 
 ## 2.3 TerraBrasilis Deforestation --------
 # import TerraBrasilis - PRODES CSV: https://terrabrasilis.dpi.inpe.br/app/dashboard/deforestation/biomes/cerrado/increments
@@ -505,3 +475,4 @@ p2 <- p2 +
 ggsave(filename = paste0(path_figures, "soybeanstats_harvestmarketyear.png"),
        p2, height = 22, width = 19, 
        dpi = 300)  
+
