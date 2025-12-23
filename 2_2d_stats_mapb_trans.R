@@ -1,13 +1,13 @@
-# (For Casc Effects Paper)
+# Section 00: Script Details ----------------
 
-# title: 2_x_mapb_trans_stats.R
+# title: 2_xx_mapb_trans_stats.R
 
 # author: Nick Manning
 
-# purpose: goes along with 2_x_mapb_trans_plots; this script loads the cleaned df and calculates changes over time for Cerrado, Brazil, and Brazil excluding Cerrado
+# purpose: goes along with 2_xx_mapb_trans_plots; this script loads the cleaned df and calculates changes over time for Cerrado, Brazil, and Brazil excluding Cerrado
 
 # created: Dec., 19, 2024
-# last edit date: 12/19/24
+# last edit date: Dec 2025
 
 # NOTES: 
 ### Cleaning code is from "aggStats_MapBiomas.R" and filter/plot code from "lineplot_trans_MapB_Cerr_lvl4.R"
@@ -17,11 +17,12 @@
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
-# 0) Set Paths & Constants & Libraries -------
+# 0: Set Paths & Constants & Libraries -------
 rm(list = ls())
 
 ## Libraries
-library(tidyverse)
+library(ggplot2)
+library(dplyr)
 library(stringi) # removing accents
 
 ## Paths
@@ -38,32 +39,13 @@ load(file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
 load(file = paste0(folder_derived, "muni_codes_cerr.Rdata"))
 
 ## Set "from" classes (note: we say from "any" class to soybean, so we do not set these specific classes for stats at the end of Section 3.3)
-# Broader 
-names_from <- c("Forest Formation", "Grassland", "Mosaic of Agriculture and Pasture",
-                "Pasture", "Other Temporary Crops", "Other Perennial Crops",
-                "Savanna Formation", "Soy Beans", "Sugar Cane", "Wetland")
-
-# Fewer, but more specific, classes
-names_from_few <- c("Forest Formation", "Grassland", "Pasture", "Savanna", "Wetland")
-
 # Specific from-to classes
 names_fromto <-c(
-  #"Forest Formation to Mosaic of Agriculture and Pasture",
   "Forest Formation to Pasture",
   "Forest Formation to Soy Beans",
-  #"Forest Formation to Other Temporary Crops",
-  #"Pasture to Mosaic of Agriculture and Pasture",
-  #"Pasture to Other Temporary Crops",
   "Pasture to Soy Beans",
-  #"Pasture to Sugar Cane",
-  #"Savanna Formation to Mosaic of Agriculture and Pasture",
-  #"Savanna Formation to Other Temporary Crops",
   "Savanna Formation to Pasture",
   "Savanna Formation to Soy Beans"
-  
-  # "Grassland to Soy Beans", # tested grassland -  very minimal total ha
-  # "Grassland to Pasture",
-  # "Grassland to Other Temporary Crops"
 )
 
 ## FUNCTION ## 
@@ -128,7 +110,7 @@ F_calc_change_per_year <- function(df_in){
   return(df_result)
 }
 
-# 1) Cerrado Change Data ------------------------------------------------------
+# 1: Cerrado Change Data ------------------------------------------------------
 
 df_cerr <- df
 
@@ -144,14 +126,14 @@ df_cerr_all_to_soy <- df_cerr %>%
   filter(to_level_4 == "Soy Beans") %>% 
   # group_by year and "To-Level"
   group_by(year, to_level_4) %>%
-  na.omit() #%>% 
+  na.omit()  
 
 # Run the function to see if it yields the same as doing it manually -- it does! 
 result_cerr_all <- F_calc_change_per_year(df_cerr_all_to_soy) 
 result_cerr_all <- result_cerr_all %>% mutate(desc = "Cerrado All-to-Soy")
 
 
-#2) Brazil Change Data ------------------------------------------------------
+#2: Brazil Change Data ------------------------------------------------------
 
 ## 2.1: Brazil (excl Cerrado) --------
 # all classes to soybean for Brazil
@@ -162,9 +144,10 @@ df_br_all_to_soy_nocerr <- df %>%
   # important as this makes sure we only have things that changed 
   filter(to_level_4 != from_level_4) %>% 
   filter(to_level_4 == "Soy Beans") %>% 
+  
   # group_by year and "To-Level"
   group_by(year, to_level_4) %>%
-  na.omit() #%>% 
+  na.omit() 
 
 
 # run the function with Brazil as a whole data
@@ -172,6 +155,7 @@ result_br_all_nocerr <- F_calc_change_per_year(df_br_all_to_soy_nocerr) %>% muta
 
 
 ## 2.2 Brazil (whole) -------
+
 # all classes to soybean for Brazil
 df_br_all_to_soy <- df %>%
   # important as this makes sure we only have things that changed 
@@ -179,16 +163,16 @@ df_br_all_to_soy <- df %>%
   filter(to_level_4 == "Soy Beans") %>% 
   # group_by year and "To-Level"
   group_by(year, to_level_4) %>%
-  na.omit() #%>% 
+  na.omit() 
 
 
 # run the function with Brazil as a whole data
 result_br_all <- F_calc_change_per_year(df_br_all_to_soy) %>% mutate(desc = "Brazil All-to-Soy")  
 
 
-# 3) Manual From-to Changes ------------
+# 3: Manual From-to Changes ------------
 
-## 3.1 Cerrado FROM-TO -----------------------------------------------
+## 3.1: Cerrado FROM-TO -----------------------------------------------
 
 ### SPECIFIC 'FROM-TO' CLASSES ### 
 df_cerr_specific_fromto <- df_cerr %>%
@@ -204,7 +188,7 @@ df_cerr_specific_fromto <- df_cerr %>%
   
   # group_by year and "To-Level"
   group_by(year, to_level_4) %>%
-  na.omit() #%>%
+  na.omit() 
 
 
 # df_in should be summarized to the filtering and spatial extent that we want
@@ -236,15 +220,6 @@ df_cerr_fromto_5yravg_20082012 <- df_cerr_specific_fromto_summ %>%
   summarise(avg_prev5yr_trans = mean(total_trans)) %>% 
   # add back year since we had to remove it for the mean calculation
   mutate(year = 2013)
-
-# # manual calculation from pasture --> soybeans of 2008-2012 (5 years prior to drought)
-# test <- df_cerr_specific_fromto_diff %>% 
-#   select(year, total_trans) %>% 
-#   filter(fromto == "Pasture to Soy Beans") %>% 
-#   filter(year %in% c(2008, 2009, 2010, 2011, 2012))
-# 
-# cat("5 year previous mean pasture to soybeans: ", mean(test$total_trans))
-
 
 # bring these together into one variable for easy export
 result_cerr_fromto <- df_cerr_specific_fromto_diff %>% 
@@ -278,7 +253,7 @@ result_cerr_fromto <- df_cerr_specific_fromto_diff %>%
 # add description column
 result_cerr_fromto <- result_cerr_fromto %>% mutate(desc = "Cerrado Specific From-To Classes")
 
-## 3.2 BRAZIL FROM-TO -------------------------------------------------------------------
+## 3.2: BRAZIL FROM-TO -------------------------------------------------------------------
 
 ### 3.2.1: Brazil (Excl. Cerrado) From-To ---------------
 df_br_nocerr_fromto <- df %>%
@@ -331,15 +306,6 @@ df_br_nocerr_fromto_5yravg_20082012 <- df_br_nocerr_fromto_summ %>%
   # add back year since we had to remove it for the mean calculation
   mutate(year = 2013)
 
-# # manual calculation from pasture --> soybeans of 2008-2012 (5 years prior to drought)
-# test <- df_br_nocerr_fromto_diff %>% 
-#   select(year, total_trans) %>% 
-#   filter(fromto == "Pasture to Soy Beans") %>% 
-#   filter(year %in% c(2008, 2009, 2010, 2011, 2012))
-# 
-# cat("5 year previous mean pasture to soybeans: ", mean(test$total_trans))
-
-
 # bring these together into one variable for easy export
 result_br_fromto_nocerr <- df_br_nocerr_fromto_diff %>% 
   # first, filter our full from-to variable to just 2013
@@ -374,13 +340,9 @@ result_br_fromto_nocerr <- result_br_fromto_nocerr %>% mutate(desc = "Brazil (ex
 ## 3.2.2: Brazil (whole) From-To ---------
 df_br_fromto <- df %>%
   
-  # remove Cerrado changes to see if Cerrado is changing faster than others 
-  #filter(!(geocode %in% muni_codes_cerr)) %>% 
-  
   # important as this makes sure we only have things that changed 
   filter(to_level_4 != from_level_4) %>% 
-  #filter(to_level_4 == "Soy Beans") %>% 
-  
+
   # Create from-to column
   mutate(fromto = paste0(from_level_4, " to ", to_level_4)) %>% 
   
@@ -421,14 +383,6 @@ df_br_fromto_5yravg_20082012 <- df_br_fromto_summ %>%
   summarise(avg_prev5yr_trans = mean(total_trans)) %>% 
   # add back year since we had to remove it for the mean calculation
   mutate(year = 2013)
-
-# # manual calculation from pasture --> soybeans of 2008-2012 (5 years prior to drought)
-# test <- df_br_fromto_diff %>% 
-#   select(year, total_trans) %>% 
-#   filter(fromto == "Pasture to Soy Beans") %>% 
-#   filter(year %in% c(2008, 2009, 2010, 2011, 2012))
-# 
-# cat("5 year previous mean pasture to soybeans: ", mean(test$total_trans))
 
 
 # bring these together into one variable for easy export
@@ -471,7 +425,7 @@ result_final <- rbind(
 )
 
 # create table for MS 
-write.csv(result_final, "../Figures/land_conversion_mapb.csv", row.names = F)
+# write.csv(result_final, "../Figures/land_conversion_mapb.csv", row.names = F)
 
 # Format the table
 table_result <- result_final %>%
@@ -514,57 +468,4 @@ df_cerr_all_to_soy_years_diff <- df_cerr_all_to_soy_years %>%
     diffpct = round(((total_trans - lag(total_trans))/lag(total_trans))*100, 1)
   )
 
-
-# GRAVEYARD -----------------------------------------------------------------------
-
-## MANUAL CONFIRMATION THAT THE FUNCTION WORKS ON 'df_cerr_all_to_soy' ## 
-# # calculate sum of transition
-# df_cerr_all_to_soy <- df_cerr_all_to_soy %>%
-#   summarize(total_trans = sum(ha)) %>% 
-#   filter(year %in% yr_range) %>%  
-#   as.data.frame()
-# 
-#  
-# ## Calculate Change per Year
-# df_cerr_all_to_soy <- df_cerr_all_to_soy %>% 
-#   arrange(year) %>% 
-#   mutate(
-#     # Difference = 2013 - 2012 per category
-#     diff =  round(total_trans - lag(total_trans), 1),
-#     # Pct Difference = ((2013-2012)/2012)*100 per category
-#     diffpct = round(((total_trans - lag(total_trans))/lag(total_trans))*100, 1)
-#   )
-# 
-# ## Calculate Change per 5-Year Average 
-# # Calc Differences from 2013 to 5-year average
-# df_cerr_avg_pre2013 <- df_cerr_all_to_soy %>% 
-#   filter(year < 2013 & year >= 2008) %>% 
-#   group_by(year) %>% 
-#   na.omit() %>% 
-#   summarise(avg_prev5yr_trans = mean(total_trans)) %>% 
-#   filter(year == 2012) %>%
-#   select(avg_prev5yr_trans) %>% 
-#   as.numeric()
-# 
-# # bring these together into one variable for easy export
-# df_cerr_all_diff <- df_cerr_all_to_soy %>% 
-#   # first, filter our full from-to variable to just 2013
-#   filter(year == 2013) %>% 
-#   
-#   # then, rename all of the relevant columns
-#   # note that 20122013 means the difference between the transition totals between these years
-#   # i.e. 2012 is the transitions between 2011-2012 and 2013 is the transitions between 2012-2013 and the diff is the difference between these two 
-#   rename(total_trans_2013 = total_trans,
-#          diff_20122013 = diff,
-#          diff_20122013_pct = diffpct) %>% 
-#   
-#   # then, add in our 5 year prior averages
-#   # this is the avg. transition from 2008 (i.e. 2007-2008) to 2012 (i.e. 2011-2012)
-#   mutate(avg_prev5yr_trans = df_cerr_avg_pre2013) %>%
-#   mutate(
-#     diff_5yr = total_trans_2013 - avg_prev5yr_trans,
-#     dff_5yr_pct = ((total_trans_2013 - avg_prev5yr_trans) / avg_prev5yr_trans) * 100
-#   ) %>% 
-#   ungroup() %>% 
-#   select(-year) %>% 
-#   mutate_if(is.numeric, round)
+print(df_cerr_all_to_soy_years_diff)
