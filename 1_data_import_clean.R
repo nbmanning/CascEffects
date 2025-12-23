@@ -12,8 +12,8 @@
 
 # XX REQUIRES:
 ## "../Data_Source/br_st_abbv.csv" -- A CSV of the abbreviations for the different states
-## "../Data_Source/microregion_codes_names_cerrado.csv" -- A xx; from 0_GetMicroMeso_in_Cerrado.R
-## "../Data_Source/microregion_codesonly_cerrado.csv"-- A xx; from 0_GetMicroMeso_in_Cerrado.R
+
+## Run 0_xx first to get CSVs of geocodes from different spatial intersections, will be used to filter here
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -39,6 +39,8 @@ BR_abbvs <- read.csv("../Data_Source/br_st_abbv.csv", header = T)
 micro_codes_names_cerr <- read.csv(file = "../Data_Source/microregion_codes_names_cerrado.csv")
 micro_codes_cerr <- read.csv("../Data_Source/microregion_codesonly_cerrado.csv")
 micro_codes_cerr <- micro_codes_cerr$x
+
+
 
 BRCerr_abbvs <- filter(BR_abbvs, biome == "Cerrado")
 BRCerr_state_abbvs <- BRCerr_abbvs$state
@@ -703,6 +705,7 @@ df_area_p_USMW_BRCerr <- df_area_p_USMW_BRCerr  %>%
 
 # 6: Land Transition to Soybean ---------
 
+##### Potentially Delete here until **########
 ## 6.1: Load & Clean Land Transition Data from MapBiomas Collection 6 --------
 
 ### NOTE: Collection 7 is out, but Collection 6 is included in R package datazoom.amazonia
@@ -719,8 +722,10 @@ df_area_p_USMW_BRCerr <- df_area_p_USMW_BRCerr  %>%
 
 #save(source_mapb_trans_municip, file = "../Data_Source/source_mapb_trans_municip.Rdata")
 #load(file = "../Data_Source/source_mapb_trans_municip.Rdata")
+##### **########
 
-# 1) Import MapB Col. 8 & Clean -----------
+
+## 6.1) Import MapB Col. 8 & Clean -----------
 
 # To get to MapBiomas Col. 8 Trans Only...
 ## 1) Download 'COBERTURA E TRANSIÇÕES MUNICÍPIOS & BIOMAS (COLEÇÃO 8)' from https://brasil.mapbiomas.org/estatisticas/ . Note that we saved this as 'SOURCE_trans_col8_mapbiomas_municip.xlsx' and is downloaded as 'tabela_geral_mapbiomas_col8_biomas_municipios.xlsx'. We downloaded this on Dec, 6, 2023
@@ -764,7 +769,7 @@ names(df)
 # gather to make into a long dataset; change the number if you changed 'select' above
 ncol(df)
 df <- gather(df,"year","ha",9:ncol(df))     
-#df2 <- df2 %>% filter(municipality == "Alta Floresta D'Oeste")
+#df2 <- df2 %>% filter(municipality == "Alta Floresta D'Oeste") # test one municipality
 
 # Save 
 save(df, file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
@@ -772,14 +777,14 @@ save(df, file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
 ## Load Clean & Long Data - can skip to here once you've run the above code ------
 load(file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
 
-# load municipality codes for Cerrado 
-load(file = paste0(folder_derived, "muni_codes_cerr.Rdata"))
+# load municipality codes for Cerrado from script 0
+load(file = paste0("../Data_Derived/muni_codes_cerr.Rdata"))
 
 
 
-# 2) Filter & Calculate Stats ---------
+## 6.2) Filter & Calculate Stats ---------
 
-## 2.1) Filter ------
+### 6.2.1) Filter ------
 
 df_g <- df
 
@@ -803,12 +808,6 @@ df_g <- df_g %>%
 save(df_g, file = paste0(folder_derived, "mapb_col8_clean_long_cerr_nosamefromto.Rdata"))
 load(file = paste0(folder_derived, "mapb_col8_clean_long_cerr_nosamefromto.Rdata"))
 
-# test_col8 <- 
-# set to other variable name & get others -- not just soybeans 
-# trans_BR <- source_mapb_trans_municip %>% 
-#   filter(to_level_4 %in% list_lvl4_interest) 
-
-df_g2 <- df_g %>% filter(municipality == "Vilhena")
 
 # filter to just transitioning to soybeans 
 trans_tosoy_BR <- df_g %>%
@@ -816,7 +815,7 @@ trans_tosoy_BR <- df_g %>%
   filter(to_level_4 == "Soybeans" | to_level_4 == "Pasture")
 
 
-# break up intervals into start and end year (going from )
+# break up intervals into start and end year (going from 1-year-prior to the year of transition - matches with above step in 6.1)
 trans_tosoy_BR$start_year <- as.numeric(str_sub(trans_tosoy_BR$year, 1, 4))-1 
 trans_tosoy_BR$end_year <- as.numeric(str_sub(trans_tosoy_BR$year, -4, -1))
 
@@ -852,39 +851,11 @@ trans_tosoy_BRmunicip_agg <- trans_tosoy_BRmunicip_agg %>%
 # keep municip data
 trans_tosoy <- trans_tosoy_BRmunicip_agg
 
+## 6.3: Filter to Just the Territories (municipalities) Within the Cerrado -------
 
-## 6.3: Load Municipality Shapefile and Cerrado Shapefile and Intersect -----
-
-### 6.3.1: Load Municipality Shapefile ------
-
-# Read all municipalities in the country at a given year
-shp_muni <- read_municipality(code_muni="all", year=2018)
-
-### 6.3.2: Load Cerrado Shapefile ----
-shp_br_cerr <- read_biomes(
-  year = 2019,
-  simplified = T,
-  showProgress = T
-) %>% dplyr::filter(name_biome == "Cerrado")
-
-### 6.3.3: Intersect Cerrado & Muni ----
-str(shp_br_cerr)
-str(shp_muni)
-
-# get municipalities that are at all within the Cerrado
-shp_muni_in_cerr <- st_intersection(shp_muni, shp_br_cerr)
-
-### 6.3.4: Get Territory Codes for Municipalities in Intersection -----
-# get shp of intersecting municipalities
-shp_code_muni <- shp_muni_in_cerr %>% select(code_muni, geom)
-
-# get only codes of intersecting
-muni_codes_cerr <- shp_muni_in_cerr$code_muni
-##################
-### 6.3.5: Filter to Just the Territories (municipalities) Within the Cerrado -------
+# filter
 trans_tosoy_cerrmuni <- trans_tosoy %>% 
-  filter(geocode %in% muni_codes_cerr)
-
+  filter(geocode %in% muni_codes_cerr) # needs shapefile information from code 0, loaded above at the end of step 6.1
 
 ## 6.4: Get Land Transition to Soy  -----
 
@@ -896,7 +867,7 @@ df_trans_to_soy_BRCerr_muni <- trans_tosoy_cerrmuni %>%
 
 df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>% filter(yr >= 2007 & yr <= 2017)
 
-# # 7: Land Transition with Certain Classes of Interest ------
+# Maybe remove? # 7: Land Transition with Certain Classes of Interest ------
 # 
 # ## 7.0: Set Constants -------
 # # Set the transition variables to keep 
@@ -976,6 +947,3 @@ save(df_trans_to_soy_BRCerr_muni,
 
 # save(df_trans_to_classes_BRCerr_muni,
 #      file = "../Data_Derived/land_trans_toclasses_df.RData")
-
-save(shp_br_cerr, shp_muni, shp_code_muni, shp_muni_in_cerr,
-     file = "../Data_Derived/land_trans_shp.RData")
