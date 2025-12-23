@@ -461,6 +461,17 @@ ggsave(
 # Brazil to the rest of the world of 58% and 70% (respectively) and export quantity and value 
 # to China increased 66% and 71%.
 
+#5.1: Other text -----
+# # from "UNComtrade_USBR_Exports_20072019_sheet.xlsx"
+# 24553595386 # US 2013 Export Qty --> China
+# 39401117964 # US 2013 Export Qty --> world
+# 24553595386/39401117964
+# 
+# 32468028 # BR 2012 Export Qty --> World (from FAOSTAT, missing from UN Comtrade)
+# 42796106 # BR 2013 Export Qty --> World (from FAOSTAT, missing from UN Comtrade)
+# 17449785616 # BR 2012 Export Value --> World
+# 22812299141 # BR 2013 Export Value --> World
+
 # Delete?? -------
 # 6: Global Export Leaders -- are they Brazil and the US? -------
 ## 5.0 - get world imp and exp numbers  
@@ -743,13 +754,3 @@ F_plot_comp <- function(df_c){
 F_plot_comp(df_china)
 
 
-# G4: Other text -----
-# from "UNComtrade_USBR_Exports_20072019_sheet.xlsx"
-24553595386 # US 2013 Export Qty --> China
-39401117964 # US 2013 Export Qty --> world
-24553595386/39401117964
-
-32468028 # BR 2012 Export Qty --> World (from FAOSTAT, missing from UN Comtrade)
-42796106 # BR 2013 Export Qty --> World (from FAOSTAT, missing from UN Comtrade)
-17449785616 # BR 2012 Export Value --> World
-22812299141 # BR 2013 Export Value --> World
