@@ -1,6 +1,6 @@
 # Section 00: Script Details ----------------
 
-# title: 0_GetMicroMeso_in_Cerrado
+# title: 00_GetShapefiles
 # author: Nick Manning
 # purpose: Intersect Cerrado shapefile and MicroRegions Shapefile to 
 # end up with a list of MicroRegions in Cerrado. This will be used in 1_data_import_clean.R to 
@@ -8,11 +8,14 @@
 
 # Last Updated: Dec 2025
 
+# REQUIRES:
+## No imports, only requires your folders to be structured as specified in the ReadMe
+
+#########################################################################
+# 0: Load Libraries ------
 library(geobr)
 library(sf)
 library(dplyr)
-
-#########################################################################
 
 # 0: Load Cerrado Shapefiles ------- 
 
