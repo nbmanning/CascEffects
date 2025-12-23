@@ -10,10 +10,14 @@
 
 # Last Updated: Dec 2025
 
-# XX REQUIRES:
+# REQUIRES:
 ## "../Data_Source/br_st_abbv.csv" -- A CSV of the abbreviations for the different states
+## ("../Data_Source/UNComtrade_USBR_HS1201_20072018.csv")
+## read.csv("../Data_Source/CEPEA_Parana_BR_60kg_1997_2021_daily_raw.csv"
+## read.csv("../Data_Source/UNComtrade_USBR_HS1201_20072018.csv")
+## "SOURCE_transonly_col8_mapbiomas_municip.csv"
 
-## Run 0_xx first to get CSVs of geocodes from different spatial intersections, will be used to filter here
+## Run 0_GetShapefiles.R first to get CSVs of geocodes from different spatial intersections, will be used to filter here
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -705,27 +709,7 @@ df_area_p_USMW_BRCerr <- df_area_p_USMW_BRCerr  %>%
 
 # 6: Land Transition to Soybean ---------
 
-##### Potentially Delete here until **########
-## 6.1: Load & Clean Land Transition Data from MapBiomas Collection 6 --------
-
-### NOTE: Collection 7 is out, but Collection 6 is included in R package datazoom.amazonia
-
-# source_mapb_trans_municip <- load_mapbiomas( # takes a long time
-#   dataset = "mapbiomas_transition",
-#   raw_data = F,
-#   geo_level = "municipality",
-#   #time_period = "all",
-#   language = "eng",
-#   #time_id = "year",
-#   cover_level = 4
-# )
-
-#save(source_mapb_trans_municip, file = "../Data_Source/source_mapb_trans_municip.Rdata")
-#load(file = "../Data_Source/source_mapb_trans_municip.Rdata")
-##### **########
-
-
-## 6.1) Import MapB Col. 8 & Clean -----------
+## 6.1: Import MapB Col. 8 & Clean -----------
 
 # To get to MapBiomas Col. 8 Trans Only...
 ## 1) Download 'COBERTURA E TRANSIÇÕES MUNICÍPIOS & BIOMAS (COLEÇÃO 8)' from https://brasil.mapbiomas.org/estatisticas/ . Note that we saved this as 'SOURCE_trans_col8_mapbiomas_municip.xlsx' and is downloaded as 'tabela_geral_mapbiomas_col8_biomas_municipios.xlsx'. We downloaded this on Dec, 6, 2023
@@ -782,9 +766,9 @@ load(file = paste0("../Data_Derived/muni_codes_cerr.Rdata"))
 
 
 
-## 6.2) Filter & Calculate Stats ---------
+## 6.2: Filter & Calculate Stats ---------
 
-### 6.2.1) Filter ------
+### 6.2.1: Filter ------
 
 df_g <- df
 
@@ -835,7 +819,7 @@ trans_tosoy_BR <- trans_tosoy_BR %>%
          #"value"
          "ha")
 
-## 6.2: Aggregate to_level_4 Values -------
+## 6.3: Aggregate to_level_4 Values -------
 
 # aggregate to yearly transition values by combining all FROM classes per municip per year
 trans_tosoy_BRmunicip_agg <- aggregate(ha ~ geocode + municipality + state + end_year + to_level_4, trans_tosoy_BR, sum)
@@ -851,13 +835,13 @@ trans_tosoy_BRmunicip_agg <- trans_tosoy_BRmunicip_agg %>%
 # keep municip data
 trans_tosoy <- trans_tosoy_BRmunicip_agg
 
-## 6.3: Filter to Just the Territories (municipalities) Within the Cerrado -------
+## 6.4: Filter to Just the Territories (municipalities) Within the Cerrado -------
 
 # filter
 trans_tosoy_cerrmuni <- trans_tosoy %>% 
   filter(geocode %in% muni_codes_cerr) # needs shapefile information from code 0, loaded above at the end of step 6.1
 
-## 6.4: Get Land Transition to Soy  -----
+## 6.5: Get Land Transition to Soy  -----
 
 # Aggregate to one value per year
 # agg to one value per entire region per year
@@ -867,71 +851,8 @@ df_trans_to_soy_BRCerr_muni <- trans_tosoy_cerrmuni %>%
 
 df_trans_to_soy_BRCerr_muni <- df_trans_to_soy_BRCerr_muni %>% filter(yr >= 2007 & yr <= 2017)
 
-# Maybe remove? # 7: Land Transition with Certain Classes of Interest ------
-# 
-# ## 7.0: Set Constants -------
-# # Set the transition variables to keep 
-# list_lvl4_classes <- c("Soy Beans", "Pasture",
-#                        "Other Temporary Crops", "Mosaic of Agriculture and Pasture",
-#                        "Sugar Cane", "Other Non Vegetated Area", "Coffe",
-#                        "Other Non Forest Natural Formation", "Citrus", "Rice")
-# 
-# ## 7.1: Filter & Clean --------
-# # set to other variable name & get others -- not just soybeans 
-# trans_toclasses_BR <- 
-#   #source_mapb_trans_municip %>%
-#   df_g %>% 
-#   filter(to_level_4 %in% list_lvl4_classes)
-# 
-# # break up intervals into start and end year (going from )
-# trans_toclasses_BR$start_year <- as.numeric(str_sub(trans_toclasses_BR$year, 1, 4)) 
-# trans_toclasses_BR$end_year <- as.numeric(str_sub(trans_toclasses_BR$year, -4, -1))
-# 
-# str(trans_toclasses_BR)
-# 
-# # keep only consecutive start/end years
-# # this means that 2013 captures the 2012-13 harvest year in BR 
-# trans_toclasses_BR <- trans_toclasses_BR %>% 
-#   filter(end_year == start_year+1) %>% 
-#   select("year", "end_year","start_year","state","municipality",
-#          "municipality_code",
-#          "from_level_0", "from_level_1", "from_level_2", "from_level_3", "from_level_4",     
-#          "to_level_0", "to_level_1", "to_level_2", "to_level_3", "to_level_4",      
-#          "value"
-#          )
-# 
-# ## 7.2: Aggregate to_level_4 Values ----
-# 
-# # aggregate to yearly transition values by combining all FROM classes per municip per year
-# trans_toclasses_BRmunicip_agg <- aggregate(value ~ municipality_code + municipality + state + end_year + to_level_4, trans_toclasses_BR, sum)
-# 
-# trans_toclasses_BRmunicip_agg <- trans_toclasses_BRmunicip_agg %>% 
-#   filter(end_year >= 2000 & end_year <= 2020) %>%  
-#   rename(
-#     "yr" = "end_year",
-#     "trans" = "value") %>%
-#   select(., c("yr","state", "municipality", "municipality_code", "trans")) %>% 
-#   mutate(country = "Brazil")
-# 
-# # rename 
-# trans_toclasses <- trans_toclasses_BRmunicip_agg
-# 
-# ## 7.3: filter to just the territories (municipalities) within the Cerrado -----
-# trans_toclasses_cerrmuni <- trans_toclasses %>% 
-#   filter(municipality_code %in% muni_codes_cerr)
-# 
-# 
-# ## 7.4: Get Land Transition to Other Classes of Interest -----
-# 
-# # Aggregate to one value per year
-# # agg to one value per entire region per year
-# df_trans_to_classes_BRCerr_muni <- trans_toclasses_cerrmuni %>% 
-#   aggregate(trans ~ yr, ., sum) %>%
-#   mutate(country = "Brazil")
-# 
-# df_trans_to_classes_BRCerr_muni <- df_trans_to_classes_BRCerr_muni %>% filter(yr >= 2007 & yr <= 2017)
-
-# 8: Export All df's to Use in Next Script -----
+ 
+# 7: Export All df's to Use in Next Script -----
 
 # Export Production, Price, Area, and Exports
 save(df_prod_USMW_BRCerr, df_prod_USBR,
@@ -944,6 +865,3 @@ save(df_prod_USMW_BRCerr, df_prod_USBR,
 # Export Land Change
 save(df_trans_to_soy_BRCerr_muni,
      file = "../Data_Derived/land_trans_tosoy_df.RData") # used in 2.2.1
-
-# save(df_trans_to_classes_BRCerr_muni,
-#      file = "../Data_Derived/land_trans_toclasses_df.RData")
