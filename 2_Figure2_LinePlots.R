@@ -15,11 +15,20 @@
 # Last Updated: Dec 2025
 
 # REQUIRES:
-## "../Data_Derived/prod_price_area_yield_exports.RData" from 1_data_import_clean.R
-## "../Data_Source/FAOSTAT_BrUS_2000_2020_ExportQuantity.csv" from Data_Source folder
-## "../Data_Derived/land_trans_tosoy_df.RData" from 0_GetMircoMeso_in_Cerrado.R
-## "../Data_Derived/land_trans_toclasses_df.RData" from 0_GetMircoMeso_in_Cerrado.R
-## "../Data_Source/Terrabrasilis_CerradoDeforestation.csv" from Data_Source folder - TerraBrasilis
+## ../Data_Derived/prod_price_area_yield_exports.RData 
+### from 1_Data_Import_Clean.R
+
+## ../Data_Source/FAOSTAT_BrUS_2000_2020_ExportQuantity.csv" 
+### Soybean export quantity data from FAOSTAT, available at https://www.fao.org/faostat/en/#data/TM
+
+## ../Data_Derived/land_trans_tosoy_df.RData 
+### cleaned MapBiomas data, from 00_GetShapefiles.R
+
+## ../Data_Derived/land_trans_toclasses_df.RData 
+### cleaned MapBiomas data, from 00_GetShapefiles.R
+
+## ../Data_Source/Terrabrasilis_CerradoDeforestation.csv
+### A CSV of Cerrado deforestation data from Brazil's INPE (National Institute for Space Research) - PRODES, available from https://terrabrasilis.dpi.inpe.br/app/dashboard/deforestation/biomes/cerrado/increments
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -472,3 +481,4 @@ p2 <- p2 +
 ggsave(filename = paste0(path_figures, "soybeanstats_harvestmarketyear.png"),
        p2, height = 22, width = 19, 
        dpi = 300)  
+

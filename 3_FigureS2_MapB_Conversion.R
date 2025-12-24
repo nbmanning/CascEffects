@@ -1,15 +1,17 @@
-# (For Casc Effects Paper)
+# Section 00: Script Details ----------------
 
-# title: 2_mapb_trans_plots.R
+# title: 3_FigureS2_MapB_Conversion.R
 # author: Nick Manning
 # purpose: Re-use code from SIMPLE-G to plot certain land transititon categories from mapbiomas
 # created date:
 # last edit date: 12/19/24
 
-# NOTE: 
-### Cleaning code is from "aggStats_MapBiomas.R" and filter/plot code from "lineplot_trans_MapB_Cerr_lvl4.R"
+# REQUIRES: 
+## "mapb_col8_clean_long.Rdata" from 1_Data_Import_Clean.R
+## "muni_codes_cerr.Rdata" from 00_GetShapefiles.R
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
 # 0) Set Paths & Constants & Libraries -------
 rm(list = ls())
 
@@ -25,7 +27,7 @@ folder_derived <- "../Data_Derived/"
 ## Constants
 yr_range <- 2008:2018
 
-## Load Clean & Long Data - can skip to here once you've run code xx 1_data_import_clean.R at least once ------
+## Load Clean & Long Data - can skip to here once you've run code 1_Data_Import_Clean at least once ------
 load(file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
 
 # load municipality codes for Cerrado 

@@ -12,6 +12,7 @@
 ## No imports, only requires your folders to be structured as specified in the ReadMe
 
 #########################################################################
+
 # 0: Load Libraries ------
 library(geobr)
 library(sf)

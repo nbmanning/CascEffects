@@ -1,18 +1,20 @@
 # Section 00: Script Details ----------------
 
-# title: 2_figure_change_export_value.R
+# title: 2_Figure5_ExportValueUSBR.R
 # Purpose: Plot change in exports to top trade partners of US and Brazil. 
 # This will be Figure 4
 # Date: 7/10/24
-# Last Updated: December 2024
+# Last Updated: December 2025
 # Author: Nick Manning
 
 # REQUIRES:
-## "../Data_Source/UNComtrade_USBR_Exports_20072019_sheet.xlsx", sheet = "RelevantExportData"
-## "../Data_Source/FAOSTAT_BrUS_2000_2020_ExportQuantity.csv")
-## ("../Data_Source/FAOSTAT_BRtoChina_ExportQuantity.csv")
-## ("../Data_Source/FAOSTAT_BrUS_2000_2020_ExportQuantity.csv")
-## ("../Data_Source/UNComtrade_USBR_HS1201_20072018.csv")
+## ../Data_Source/UNComtrade_USBR_Exports_20072019_sheet.xlsx, sheet = "RelevantExportData"
+## ../Data_Source/UNComtrade_USBR_HS1201_20072018.csv
+
+## ../Data_Source/FAOSTAT_BrUS_2000_2020_ExportQuantity.csv
+## ../Data_Source/FAOSTAT_BRtoChina_ExportQuantity.csv
+## ../Data_Source/FAOSTAT_BrUS_2000_2020_ExportQuantity.csv
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 rm(list = ls())

@@ -8,8 +8,9 @@
 # Last Updated: December 2025
 
 # Requires: 
-## CSV of yield data (Data_Source\USyielddata.csv)
-
+## ../Data_Source/USyielddata.csv
+### USDA Yield Data per county - available from USDA NASS QuickStat: https://quickstats.nass.usda.gov/
+  
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #  
 

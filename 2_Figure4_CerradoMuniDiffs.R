@@ -1,6 +1,6 @@
 # Section 00: Script Details ----------------
 
-# title: 2_2a_figure2_CerradoMuniDiffs.R
+# title: 2_Figure4_CerradoMuniDiffs.R
 # author: Nick Manning
 # purpose: Get Change in Production and Value at the muncipality level 
 
@@ -11,8 +11,11 @@
 # Last Edited: Dec 2025
 
 # REQUIRES:
-## "../Data_Source/soymaize_2010_2022_andres/soy_Brazil_2010_2022t" -- Soybean Spatial Data from SIDRA-PAM: https://sidra.ibge.gov.br/pesquisa/pam/tabelas
-## "../Data_Source/soymaize_2010_2022_andres/muni_codes_cerr.Rdata" -- codes for municipalities in the Cerrado from 0_xx.R
+## ../Data_Source/soymaize_2010_2022_andres/soy_Brazil_2010_2022t 
+### Soybean Spatial Data from SIDRA-PAM: https://sidra.ibge.gov.br/pesquisa/pam/tabelas
+
+## ../Data_Source/soymaize_2010_2022_andres/muni_codes_cerr.Rdata 
+### codes for municipalities in the Cerrado from 00_GetShapefiles.R.R
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -36,8 +39,8 @@ library(patchwork) # arranging plots
 ## Set Constants -------- 
 getwd()
 
-folder_source <- "../Data_Source/soymaize_2010_2022_andres/"
-folder_figures <- "../Figures/CerradoMuni/"
+folder_source <- "../Data_Source/soymaize_2010_2022_SIDRA_PAM/"
+folder_figures <- "../Figures/"
 
 ###  Set Years ----------
 yr1 <- 2012
@@ -239,7 +242,7 @@ F_facet <- function(data, var, units){
     
 
   # save figure
-  ggsave(paste0("../Figures/CerradoMuni/",
+  ggsave(paste0("../Figures/",
                 "_gg_", crop, "_facet_", y_var,
                 ".png"),
          plot = p,

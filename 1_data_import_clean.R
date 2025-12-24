@@ -11,13 +11,21 @@
 # Last Updated: Dec 2025
 
 # REQUIRES:
-## "../Data_Source/br_st_abbv.csv" -- A CSV of the abbreviations for the different states
-## ("../Data_Source/UNComtrade_USBR_HS1201_20072018.csv")
-## read.csv("../Data_Source/CEPEA_Parana_BR_60kg_1997_2021_daily_raw.csv"
-## read.csv("../Data_Source/UNComtrade_USBR_HS1201_20072018.csv")
-## "SOURCE_transonly_col8_mapbiomas_municip.csv"
 
 ## Run 0_GetShapefiles.R first to get CSVs of geocodes from different spatial intersections, will be used to filter here
+
+## ../Data_Source/br_st_abbv.csv 
+### A CSV of the abbreviations for the different states
+
+## ../Data_Source/UNComtrade_USBR_HS1201_20072018.csv
+### A CSV of Soybean Trade data from UNComtrade, available at https://comtradeplus.un.org/
+
+## ../Data_Source/CEPEA_Parana_BR_60kg_1997_2021_daily_raw.csv
+### A CSV of daily soybean prices from the port of Parana, available from https://www.cepea.org.br/br/indicador/soja.aspx
+
+## SOURCE_transonly_col8_mapbiomas_municip.csv
+### A CSV of Land Transition data from MapBiomas Collection 8, uploaded here. Additional Information at: https://brasil.mapbiomas.org/wp-content/uploads/sites/4/2023/08/ATBD-Collection-8-v1.docx.pdf
+
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -755,7 +763,7 @@ ncol(df)
 df <- gather(df,"year","ha",9:ncol(df))     
 #df2 <- df2 %>% filter(municipality == "Alta Floresta D'Oeste") # test one municipality
 
-# Save 
+# Save df long
 save(df, file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
 
 ## Load Clean & Long Data - can skip to here once you've run the above code ------
@@ -788,7 +796,7 @@ df_g <- df_g %>%
   # Create from-to column
   mutate(fromto = paste0(from_level_4, " to ", to_level_4)) 
 
-# Save - GOAL IS TO LOAD IN 1_data; may need xx to move this all^ to a new script 0
+# Save df_g
 save(df_g, file = paste0(folder_derived, "mapb_col8_clean_long_cerr_nosamefromto.Rdata"))
 load(file = paste0(folder_derived, "mapb_col8_clean_long_cerr_nosamefromto.Rdata"))
 
