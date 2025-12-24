@@ -202,7 +202,10 @@ y_limits <- range(y_lower, y_upper)
       y = "Natl. Production (Mmt)"
     )+
    
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.8)
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.8),
+          legend.position = "bottom",
+          legend.text = element_text(size = 20),
+          legend.title = element_text(size = 20)
     )
 )
 
