@@ -24,6 +24,7 @@ library(readxl)
 library(dplyr)
 library(ggplot2)
 library(stringr)
+library(cowplot)
 
 # 0 Set Constants  ------------------------
 # list all EU member states
@@ -420,7 +421,7 @@ df_usbr_world <- df_usbr_world %>%
 ### 4.1.2: Plot -----
 # set up legend manually
 col_US = "darkgoldenrod"
-col_BR = "darkslateblue"
+col_BR = "dodgerblue4"
 
 # Plot
 gg_export_line_usbrworld <-  ggplot(df_usbr_world, aes(x=Period, y=Fobvalue, color = ReporterDesc)) +

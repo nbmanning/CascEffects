@@ -47,8 +47,9 @@ library(patchwork)
 ### Plotting Constants ###
 breaks <- c(2007, 2012, 2017)
 
-col_US = "darkorange"
-col_BR = "darkblue"
+col_US = "darkgoldenrod"
+col_BR = "dodgerblue4"
+
 col_pas = "purple"
 col_soy = "green"
 pt_us = 17 # triangle
