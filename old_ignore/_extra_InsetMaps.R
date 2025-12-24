@@ -19,7 +19,7 @@ library(dplyr)
 library(ggplot2)
 library(sf) 
 #library(stringr) # for str_pad() & str_to_title()
-#library(tigris) # for FIPS database
+library(tigris) # for FIPS database
 library(fiftystater) # for us state map; note: had to install from GitHub for my current R, version 4.2.2 
 library(RColorBrewer)
 #library(classInt) # for mapping and setting breaks 
@@ -42,6 +42,8 @@ mw_st_abv <- c("ND", "SD", "NE","KS", "MO", "IA", "MN", "WI", "IL", "IN", "OH", 
 
 #mw_st_tigris <- str_to_title(mw_st_full)
 
+color_us <- "darkgoldenrod"
+color_br <- "dodgerblue4"
 
 # 1: Plot USA Insets -------
 ## 1.2: Load Base US Spatial Data --------------
@@ -72,7 +74,7 @@ states_mw_diss <- states_mw %>% group_by(LSAD) %>% summarize()
 
 ### 1.3.1: Plot Basic Inset --------
 ggplot(states_mw_diss)+
-  geom_sf(fill = "darkorange", color = "darkorange")+
+  geom_sf(fill = color_us, color = color_us)+
   geom_sf(data = states_conus_diss, fill = NA, color = "gray30", lwd = 2.0)+
 #  coord_sf(default_crs = sf::st_crs(4326)) +
   coord_sf(crs = "EPSG:2163") +
@@ -82,7 +84,7 @@ ggsave("../Figures/_inset_usmw_basic.png")
 
 # USA
 ggplot(states_conus_diss)+
-  geom_sf(fill = "darkorange", color = "darkorange")+
+  geom_sf(fill = color_us, color = color_us)+
   coord_sf(crs = "EPSG:2163") +
   #geom_sf(data = states_conus_diss, fill = NA, color = "gray30", lwd = 2.0)+
   theme_void()
@@ -117,7 +119,7 @@ shp_br_cerr <- read_biomes(
 ## 1.2: Create Insets ------
 (brcerr_inset_basic <- ggplot()+
    geom_sf(data = shp_br, color = "gray40", fill = "transparent", lwd = 2.0)+
-   geom_sf(data = shp_br_cerr, color = "darkblue", fill = "darkblue", lwd = 0.5)+
+   geom_sf(data = shp_br_cerr, color = color_br, fill = color_br, lwd = 0.5)+
    coord_sf(crs = "EPSG:5880") +
    #geom_sf(data = shp_cerr_states, color = "gray20", fill = "transparent", lwd = 0.2)+
    # geom_sf_text(data = shp_cerr_states %>% filter(abbrev_state != "DF"), 
@@ -132,7 +134,7 @@ ggsave("../Figures/_inset_brcerr_basic.png", brcerr_inset_basic,
 
 ## Brazil 
 (brcerr_inset_basic <- ggplot()+
-    geom_sf(data = shp_br, color = "darkblue", fill = "darkblue", lwd = 2.0)+
+    geom_sf(data = shp_br, color = color_br, fill = color_br, lwd = 2.0)+
     coord_sf(crs = "EPSG:5880") +
     
     #geom_sf(data = shp_br_cerr, color = "darkblue", fill = "darkblue", lwd = 0.5)+
@@ -169,7 +171,7 @@ ggsave("../Figures/CerradoMuni/inset.png", br_inset,
 ### 4.2.2: Create Basic Inset Map ---------
 (br_inset_basic <- ggplot()+
    geom_sf(data = shp_br, color = "gray40", fill = "transparent", lwd = 2.0)+
-   geom_sf(data = shp_br_cerr, color = "darkblue", fill = "darkblue", lwd = 0.5)+
+   geom_sf(data = shp_br_cerr, color = color_br, fill = color_br, lwd = 0.5)+
    #geom_sf(data = shp_cerr_states, color = "gray20", fill = "transparent", lwd = 0.2)+
    # geom_sf_text(data = shp_cerr_states %>% filter(abbrev_state != "DF"), 
    #              aes(label = abbrev_state), size = 3, color = "gray10") +  # Add state labels
@@ -184,7 +186,7 @@ ggsave("../Figures/_inset_basic.png", br_inset_basic,
 ## from 2012DroughtDiffs ---------
 ### 1.3.1: Plot Basic Inset --------
 ggplot(states_mw_diss)+
-  geom_sf(fill = "darkorange", color = "darkorange")+
+  geom_sf(fill = color_us, color = color_us)+
   geom_sf(data = states_conus_diss, fill = NA, color = "gray30", lwd = 2.0)+
   theme_void()
 
@@ -192,7 +194,7 @@ ggsave("../Figures/_inset_usmw_basic.png")
 
 # USA
 ggplot(states_conus_diss)+
-  geom_sf(fill = "darkorange", color = "darkorange")+
+  geom_sf(fill = color_us, color = color_us)+
   #geom_sf(data = states_conus_diss, fill = NA, color = "gray30", lwd = 2.0)+
   theme_void()
 ggsave("../Figures/_inset_us_basic.png")
