@@ -449,8 +449,7 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
 ## 3.1 Load in CSV of All Taxa from Green 2019
 
 # Read data (treat everything as character first to clean it)
-df <- read_csv(paste(path_data_source, "TableS4_AllTaxa_Green2019_PNAS.csv"),
-               col_types = cols(.default = "c"))
+df_biodiv <- read.csv(paste0(path_data_source, "TableS4_AllTaxa_Green2019_PNAS.csv"))
 
 # Clean numeric columns (remove commas, convert "-" to NA)
 ## quick function to clean
@@ -462,7 +461,7 @@ clean_num <- function(x) {
 }
 
 # apply function to all numeric columns (i.e. except Taxa & Species)
-df_clean <- df %>%
+df_biodiv_clean <- df_biodiv %>%
   mutate(
     across(
       .cols = -c(Taxa, Species),
@@ -473,7 +472,7 @@ df_clean <- df %>%
 ## 3.2  Calculate Habitat Loss per Taxa per 
 
 # Compute differences and percent changes
-df_out <- df_clean %>%
+df_biodiv_out <- df_biodiv_clean %>%
   mutate(
     # Habitat change
     Diff_Habitat_20122014 = Habitat_2012 - Habitat_2014,
@@ -510,7 +509,7 @@ df_out <- df_clean %>%
          "DiffPct_PrPerst20122014")
 
 # calculate means for endemic plants (>= 0.7 global range in Cerrado, from Green et al., 2019)
-mean_h_pp_2014 <- df_out %>%
+df_biodiv_mean_h_pp_2014 <- df_biodiv_out %>%
   filter(Prop_Global_Range_Within_Cerrado >= 0.7 & Taxa == "Plants") %>% 
   group_by(Taxa) %>%
   summarise(
@@ -529,7 +528,7 @@ mean_h_pp_2014 <- df_out %>%
   )
 
 # pull examples (orchid and Maned Wolf)
-df_out_ex <- df_out %>% 
+df_biodiv_out_ex <- df_biodiv_out %>% 
   filter(
     Species == "Cyrtopodium hatschbachii" | Species == "Chrysocyon brachyurus"
   )
