@@ -30,6 +30,9 @@
 ## ../Data_Source/Terrabrasilis_CerradoDeforestation.csv
 ### A CSV of Cerrado deforestation data from Brazil's INPE (National Institute for Space Research) - PRODES, available from https://terrabrasilis.dpi.inpe.br/app/dashboard/deforestation/biomes/cerrado/increments
 
+## ../Data_Source/Terrabrasilis_CerradoDeforestation.csv
+### A CSV of several species and their Cerrado habitats (km2) and probabilities of persistence from Green et al., 2019 Table S4, available at: https://www.pnas.org/doi/suppl/10.1073/pnas.1905618116/suppl_file/pnas.1905618116.sapp.pdf
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 rm(list = ls())
@@ -440,11 +443,100 @@ df_trans_deforest <- df_trans_deforest %>% filter(year >= 2007 & year <= 2017)
     theme(axis.text.x = element_text(angle = 90, vjust = 0.8))
 )
 
+# 3: Biodiversity Impact ---------
+# NOTE: This section is not in the line plot!
 
+## 3.1 Load in CSV of All Taxa from Green 2019
 
-# 3: Arrange Plots ------------
+# Read data (treat everything as character first to clean it)
+df <- read_csv(paste(path_data_source, "TableS4_AllTaxa_Green2019_PNAS.csv"),
+               col_types = cols(.default = "c"))
 
-## 3.1: Arrange Final Figure ----
+# Clean numeric columns (remove commas, convert "-" to NA)
+## quick function to clean
+clean_num <- function(x) {
+  x %>%
+    str_replace_all(",", "") %>%
+    na_if("-") %>%
+    as.numeric()
+}
+
+# apply function to all numeric columns (i.e. except Taxa & Species)
+df_clean <- df %>%
+  mutate(
+    across(
+      .cols = -c(Taxa, Species),
+      .fns  = clean_num
+    )
+  )
+
+## 3.2  Calculate Habitat Loss per Taxa per 
+
+# Compute differences and percent changes
+df_out <- df_clean %>%
+  mutate(
+    # Habitat change
+    Diff_Habitat_20122014 = Habitat_2012 - Habitat_2014,
+    DiffPct_Habitat_20122014 = 100 * Diff_Habitat_20122014 / Habitat_2012,
+    
+    # Persistence change
+    Diff_PrPersistence_20122014 = PrPersistence_2012 - PrPersistence_2014,
+    DiffPct_PrPerst20122014 = 100 * Diff_PrPersistence_20122014 / PrPersistence_2012
+  ) %>% 
+  # original order
+  # select("Taxa", "Species", "Prop_Global_Range_Within_Cerrado",
+  #        "Habitat_Original", "Habitat_2000",       "Habitat_2010",      
+  #        "Habitat_2012",       "Habitat_2014",       "PrPersistence_Original",          
+  #        "PrPersistence_2000", "PrPersistence_2010", "PrPersistence_2012",              
+  #        "PrPersistence_2014", "Diff_Habitat_20122014", "DiffPct_Habitat_20122014",        
+  #        "Diff_PrPersistence_20122014",  "DiffPct_PrPerst20122014") %>% 
+  # only keep 2012-2014
+  select("Taxa", 
+         "Species", 
+         "Prop_Global_Range_Within_Cerrado",
+         #"Habitat_Original", 
+         "Habitat_2000",       
+         #"Habitat_2010",      
+         "Habitat_2012",       
+         "Habitat_2014",       
+         "Diff_Habitat_20122014", 
+         "DiffPct_Habitat_20122014",        
+         #"PrPersistence_Original",          
+         "PrPersistence_2000", 
+         #"PrPersistence_2010", 
+         "PrPersistence_2012",              
+         "PrPersistence_2014", 
+         "Diff_PrPersistence_20122014",  
+         "DiffPct_PrPerst20122014")
+
+# calculate means for endemic plants (>= 0.7 global range in Cerrado, from Green et al., 2019)
+mean_h_pp_2014 <- df_out %>%
+  filter(Prop_Global_Range_Within_Cerrado >= 0.7 & Taxa == "Plants") %>% 
+  group_by(Taxa) %>%
+  summarise(
+    mean_Habitat_2000 = round(mean(Habitat_2000, na.rm = TRUE), 3),
+    mean_Habitat_2012 = round(mean(Habitat_2012, na.rm = TRUE), 3),
+    mean_Habitat_2014 = round(mean(Habitat_2014, na.rm = TRUE), 3),
+    mean_PrPersistence_2000 = round(mean(PrPersistence_2000, na.rm = TRUE), 3),
+    mean_PrPersistence_2012 = round(mean(PrPersistence_2012, na.rm = TRUE), 3),
+    mean_PrPersistence_2014 = round(mean(PrPersistence_2014, na.rm = TRUE), 3)) %>% 
+  mutate(
+    DifAvgHab_2012_2014 = mean_Habitat_2014 - mean_Habitat_2012,
+    DiffPct_Habitat_2012_2014 = 100 * DifAvgHab_2012_2014 / mean_Habitat_2012,
+    
+    DifAvgPP_2012_2014 = mean_PrPersistence_2014 - mean_PrPersistence_2012,
+    DiffPct_PP_2012_2014 = 100 * DifAvgPP_2012_2014 / mean_PrPersistence_2012
+  )
+
+# pull examples (orchid and Maned Wolf)
+df_out_ex <- df_out %>% 
+  filter(
+    Species == "Cyrtopodium hatschbachii" | Species == "Chrysocyon brachyurus"
+  )
+
+# 4: Arrange Plots ------------
+
+## 4.1: Arrange Final Figure ----
 # Set themes
 theme_text_sizes <- theme(
   # Set size and style for the title
@@ -481,7 +573,7 @@ p2 <- p2 +
   plot_annotation(tag_levels = 'a') & 
   theme(plot.tag = element_text(size = 36))
 
-## 3.2: Save Final Figure -----
+## 4.2: Save Final Figure -----
 ggsave(filename = paste0(path_figures, "soybeanstats_harvestmarketyear.png"),
        p2, height = 22, width = 19, 
        dpi = 300)  
