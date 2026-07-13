@@ -601,3 +601,54 @@ ggplot(
     title = "Total Soybean Exports by Group Through Time"
   ) +
   theme_minimal()
+
+
+# xx Basic DiD Code -------
+# Example from DiD Causality Video from Dr. HK: https://youtu.be/8RQWEykGAjM?si=35fj5DKrYmMAI-Wj&t=375
+# library(tidyverse)
+set.seed(101)
+# Create our data
+ex_diddata <- tibble(year = sample(2002:2010, 10000, replace = T),
+                     group = sample(c('TreatedGroup', 'UntreatedGroup'), 10000, replace = T)) %>% 
+  mutate(after = (year >= 2007)) %>% 
+  # only let the treatment be applied to the treated group
+  mutate(D = after*(group == "TreatedGroup")) %>% 
+  mutate(Y = 2*D + .5*year + (group == 'TreatedGroup') + rnorm(10000)) # 2 is the "True Effect"
+
+# now, get before-after differences for both groups
+ex_means <- ex_diddata %>% group_by(group, after) %>% summarize(Y=mean(Y))
+
+#before-after difference for untreated; has the time effect only 
+ex_bef.aft.untreated <- filter(ex_means, group == "UntreatedGroup", after == 1)$Y - filter(ex_means, group == "UntreatedGroup", after == 0)$Y
+
+#before-after difference for treated; has the time AND treated effect 
+ex_bef.aft.treated <- filter(ex_means, group == "TreatedGroup", after == 1)$Y - filter(ex_means, group == "TreatedGroup", after == 0)$Y
+
+#Difference-in-Difference! Take the Time+Treated effect and remove the time effect 
+DID <- ex_bef.aft.treated - ex_bef.aft.untreated
+DID
+
+# 4) Dynamic DiD Example -------- PICK UP HERE
+# Example Link https://bcallaway11.github.io/did/articles/did-basics.html#examples-with-simulated-data
+library(did) # manually type step-by-step!
+
+## 4.1 Build the Dataset ------
+# set seed so everything is reproducible
+set.seed(1814)
+
+# generate dataset with 4 time periods
+sp <- reset.sim()
+sp$te <- 0
+time.periods <- 4
+
+# add dynamic effects
+sp$te.e <- 1:time.periods
+
+# generate data set with these parameters
+# here, we dropped all units who are treated in time period 1 as they do not help us recover ATT(g,t)'s.
+dta <- build_sim_dataset(sp)
+
+# How many observations remained after dropping the ``always-treated'' units
+nrow(dta)
+#This is what the data looks like
+head(dta)
