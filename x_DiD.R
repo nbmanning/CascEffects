@@ -352,56 +352,64 @@ sf_map_alltime_munis <- shp_munis_cerrado %>%
   )
 
 ## 2.3) Plot Maps-------
+color_A <- "brown"
+color_E <- "gold"
 
-### 2.3.1) Map of Groups in One Year -------
-ggplot() +
-  # set extent
-  geom_sf(data = shp_munis_cerrado) +
-  
-  # Municipalities
-  geom_sf(
-    data = sf_map_yr_munis,
-    aes(fill = group_peryr)#,
-    #color = NA
-  ) +
-  
-  # # Cerrado boundary
-  # geom_sf(
-  #   data = shp_cerrado,
-  #   fill = NA,
-  #   color = "grey50",
-  #   linewidth = 0.3
-  # ) +
-  
-  # State outline
-  geom_sf(
-    data = shp_mt_state,
-    fill = NA,
-    color = "black",
-    linewidth = 0.6
-  ) +
-  
-  scale_fill_manual(
-    values = c(
-      "A" = "brown",
-      "E" = "yellow"
-    ),
-    na.value = "white"
-  ) +
-  
-  labs(
-    fill = "Group",
-    title = paste0(
-      "Group A (>80% Domestic) and E (<20% Domestic)",
-      "\nCerrado Municipalities", 
-      " (", v_yr_map, ")",
-      "\n",
-      "Trade Instability <", v_trade_inst_q1)
-  ) +
-  
-  theme_void()
+colors_groups <- c(
+  "A" = color_A,
+  "E" = color_E
+)
+
+# ### 2.3.1) Map of Groups in One Year -------
+# ggplot() +
+#   # set extent
+#   geom_sf(data = shp_munis_cerrado) +
+#   
+#   # Municipalities
+#   geom_sf(
+#     data = sf_map_yr_munis,
+#     aes(fill = group_peryr)#,
+#     #color = NA
+#   ) +
+#   
+#   # # Cerrado boundary
+#   # geom_sf(
+#   #   data = shp_cerrado,
+#   #   fill = NA,
+#   #   color = "grey50",
+#   #   linewidth = 0.3
+#   # ) +
+#   
+#   # State outline
+#   geom_sf(
+#     data = shp_mt_state,
+#     fill = NA,
+#     color = "black",
+#     linewidth = 0.6
+#   ) +
+#   
+#   scale_fill_manual(
+#     values = c(
+#       "A" = "brown",
+#       "E" = "yellow"
+#     ),
+#     na.value = "white"
+#   ) +
+#   
+#   labs(
+#     fill = "Group",
+#     title = paste0(
+#       "Group A (>80% Domestic) and E (<20% Domestic)",
+#       "\nCerrado Municipalities", 
+#       " (", v_yr_map, ")",
+#       "\n",
+#       "Trade Instability <", v_trade_inst_q1)
+#   ) +
+#   
+#   theme_void()
 
 ### 2.3.2) Map of Groups Alltime -------
+
 ggplot() +
   # Municipalities
   geom_sf(
@@ -427,10 +435,8 @@ ggplot() +
   ) +
   
   scale_fill_manual(
-    values = c(
-      "A" = "brown",
-      "E" = "yellow"
-    ),
+    values = colors_groups,
+    breaks = c("E", "A"),
     na.value = "white"
   ) +
   
@@ -493,8 +499,10 @@ summary_count_did <- df_did %>%
     values_fill = 0
   )
 
+## 3.1) Basic EXPORT plots -------
+
 # get and plot per group per year
-df_did_sum_yr <- df_did %>%
+df_did_exp_sum_yr <- df_did %>%
   filter(destination == "TOTAL") %>%
   group_by(group_alltime, period, year) %>%
   summarise(
@@ -502,7 +510,7 @@ df_did_sum_yr <- df_did %>%
     .groups = "drop"
   ) 
 
-df_did_mean_yr <- df_did %>%
+df_did_exp_mean_yr <- df_did %>%
   filter(destination == "TOTAL") %>%
   group_by(group_alltime, period, year) %>%
   summarise(
@@ -510,9 +518,11 @@ df_did_mean_yr <- df_did %>%
     .groups = "drop"
   ) 
 
-# BASIC plots - pick up here ###############
+### PLOT ###
+
+
 ggplot(
-  df_did_sum_yr,
+  df_did_exp_sum_yr,
   aes(
     x = year,
     y = total_exports,
@@ -525,7 +535,7 @@ ggplot(
   geom_vline(xintercept = 2012)
 
 # get just the relevant trade volume and create the DiD groups 
-df_did_sum <- df_did %>%
+df_did_exp_sum <- df_did %>%
   filter(destination == "TOTAL") %>%
   group_by(group_alltime, period) %>%
   summarise(
@@ -533,7 +543,7 @@ df_did_sum <- df_did %>%
     .groups = "drop"
   ) 
 
-df_did_mean <- df_did %>%
+df_did_exp_mean <- df_did %>%
   filter(destination == "TOTAL") %>%
   group_by(group_alltime, period) %>%
   summarise(
@@ -544,7 +554,7 @@ df_did_mean <- df_did %>%
 # Test Plot
 
 # Create DF
-df_did_mean_plot <- df_did_mean %>% 
+df_did_exp_mean_plot <- df_did_exp_mean %>% 
   filter(period != "2012") %>% 
   mutate(
     period = factor(
@@ -553,7 +563,7 @@ df_did_mean_plot <- df_did_mean %>%
     )
   )
 
-df_did_sum_plot <- df_did_sum %>% 
+df_did_exp_sum_plot <- df_did_exp_sum %>% 
   filter(period != "2012") %>% 
   mutate(
     period = factor(
@@ -564,7 +574,7 @@ df_did_sum_plot <- df_did_sum %>%
 # Plot
 ## Plot mean
 ggplot(
-  df_did_mean_plot,
+  df_did_exp_mean_plot,
   aes(
     x = period,
     y = mean_exports,
@@ -584,7 +594,7 @@ ggplot(
 
 ## Plot sum
 ggplot(
-  df_did_sum_plot,
+  df_did_exp_sum_plot,
   aes(
     x = period,
     y = total_exports,
@@ -602,6 +612,188 @@ ggplot(
   ) +
   theme_minimal()
 
+## 3.2) Basic SOY AREA plots -------
+
+# get and plot per group per year
+df_did_area_sum_yr <- df_did %>%
+  filter(destination == "TOTAL") %>%
+  group_by(group_alltime, period, year) %>%
+  summarise(
+    total_area = sum(soy_area, na.rm = TRUE),
+    .groups = "drop"
+  ) 
+
+df_did_area_mean_yr <- df_did %>%
+  filter(destination == "TOTAL") %>%
+  group_by(group_alltime, period, year) %>%
+  summarise(
+    mean_area = mean(soy_area, na.rm = TRUE),
+    .groups = "drop"
+  ) 
+
+
+### PLOT ###
+
+ggplot(
+  df_did_area_sum_yr,
+  aes(
+    x = year,
+    y = total_area,
+    group = group_alltime,
+    color = group_alltime
+  )
+) +
+  geom_line() +
+  scale_color_manual(values = colors_groups, breaks = c("E", "A"))+
+  geom_point(size = 3)+
+  geom_vline(xintercept = 2012)
+
+# get just the relevant trade volume and create the DiD groups 
+df_did_area_sum <- df_did %>%
+  filter(destination == "TOTAL") %>%
+  group_by(group_alltime, period) %>%
+  summarise(
+    total_area = sum(soy_area, na.rm = TRUE),
+    .groups = "drop"
+  ) 
+
+df_did_area_mean <- df_did %>%
+  filter(destination == "TOTAL") %>%
+  group_by(group_alltime, period) %>%
+  summarise(
+    mean_area = mean(soy_area, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+df_did_area_mean_sumyr <- df_did_area_sum_yr %>%
+  group_by(group_alltime, period) %>%
+  summarise(
+    mean_area = mean(total_area, na.rm = TRUE),
+    .groups = "drop"
+  ) 
+
+# sum per year then mean
+# get just the relevant area and create the DiD groups 
+df_did_area_sum_yr <- df_did %>%
+  filter(destination == "TOTAL") %>%
+  group_by(group_alltime, period) %>%
+  summarise(
+    total_area = sum(soy_area, na.rm = TRUE),
+    .groups = "drop"
+  ) 
+
+df_did_area_mean <- df_did %>%
+  filter(destination == "TOTAL") %>%
+  group_by(group_alltime, period) %>%
+  summarise(
+    mean_area = mean(soy_area, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+
+# Test Plot
+
+# Create DF
+df_did_area_mean_plot <- df_did_area_mean %>% 
+  filter(period != "2012") %>% 
+  mutate(
+    period = factor(
+      period,
+      levels = c("pre_2012", "2012", "post_2012")
+    )
+  )
+
+df_did_area_sum_plot <- df_did_area_sum %>% 
+  filter(period != "2012") %>% 
+  mutate(
+    period = factor(
+      period,
+      levels = c("pre_2012", "2012", "post_2012")
+    )
+  )
+
+df_did_area_sumyr_plot <- df_did_area_sum_yr %>% 
+  filter(period != "2012") %>% 
+  mutate(
+    period = factor(
+      period,
+      levels = c("pre_2012", "2012", "post_2012")
+    )
+  ) 
+
+df_did_area_mean_sumyr_plot <- df_did_area_mean_sumyr %>% 
+  filter(period != "2012") %>% 
+  mutate(
+    period = factor(
+      period,
+      levels = c("pre_2012", "2012", "post_2012")
+    )
+  ) 
+
+# Plot
+## Plot mean
+ggplot(
+  df_did_area_mean_plot,
+  aes(
+    x = period,
+    y = mean_area,
+    color = group_alltime,
+    group = group_alltime
+  )
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(values = colors_groups, breaks = c("E", "A"))+
+  labs(
+    x = NULL,
+    y = "Mean Soy Area",
+    color = "Group",
+    title = "Mean Soybean Area by Group Through Time"
+  ) +
+  theme_minimal()
+
+## Plot sum
+ggplot(
+  df_did_area_sum_plot,
+  aes(
+    x = period,
+    y = total_area,
+    color = group_alltime,
+    group = group_alltime
+  )
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(values = colors_groups, breaks = c("E", "A"))+
+  labs(
+    x = NULL,
+    y = "Total Soybean Area",
+    color = "Group",
+    title = "Total Soybean Area by Group Through Time"
+  ) +
+  theme_minimal()
+
+## Plot mean of sumyr
+ggplot(
+  df_did_area_mean_sumyr_plot,
+  aes(
+    x = period,
+    y = mean_area,
+    color = group_alltime,
+    group = group_alltime
+  )
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(values = colors_groups, breaks = c("E", "A"))+
+  labs(
+    x = NULL,
+    y = "Mean Soy Area",
+    color = "Group",
+    title = "Sum-then-Mean Soybean Area by Group Through Time"
+  ) +
+  theme_minimal()
 
 # xx Basic DiD Code -------
 # Example from DiD Causality Video from Dr. HK: https://youtu.be/8RQWEykGAjM?si=35fj5DKrYmMAI-Wj&t=375
