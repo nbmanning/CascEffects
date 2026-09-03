@@ -422,130 +422,73 @@ saveRDS(
   "../Data_Derived/df_did_propalltime.rds"
 )
 
-# # *XX) Add MapBiomas Land Conversion Values to this ----------
-# ## NOTE: maybe use Conversion intervals >1? 
-# 
-# ## GOAL: get to 'df_cerr
-# 
-# ### aka the land change values from relevant vegetation classes (RVCs) to soybean per year per municipality. 
-# ### need this to be able to filter by municipality categories A and E
-## X.1) Load in MapBiomas Transition ------
-# # Load collection 8 data in tabular form 
-# csv_br_trans_m <- read.csv(paste0(folder_source, "SOURCE_transonly_col8_mapbiomas_municip.csv"), encoding = "UTF-8")
-# names(csv_br_trans_m)
-# 
-# 
-# ## X.1) Tidy -----
-# 
-# df <- csv_br_trans_m
-# 
-# # remove all accents
-# df$state <- stri_trans_general(str = df$state,  id = "Latin-ASCII")
-# df$biome <- stri_trans_general(str = df$biome,  id = "Latin-ASCII")
-# names(df)
-# 
-# # select levels and years to reduce df size 
-# df <- dplyr::select(df, c("state","municipality", "geocode", "biome", 
-#                           "from_level_3", "to_level_3",
-#                           "from_level_4", "to_level_4",
-#                           #"X1985.1986", "X1986.1987", "X1987.1988", "X1988.1989", "X1989.1990", 
-#                           #"X1990.1991", "X1991.1992", "X1992.1993", "X1993.1994", "X1994.1995", "X1995.1996", "X1996.1997", "X1997.1998", "X1998.1999",    
-#                           "X1999.2000", "X2000.2001", "X2001.2002", "X2002.2003", "X2003.2004",    "X2004.2005",    "X2005.2006",   
-#                           "X2006.2007",    "X2007.2008",    "X2008.2009",    "X2009.2010",   "X2010.2011", "X2011.2012",    "X2012.2013",   
-#                           "X2013.2014",    "X2014.2015",    "X2015.2016",  "X2016.2017",    "X2017.2018",   
-#                           "X2018.2019",    "X2019.2020",    "X2020.2021"))
-# 
-# # remove all but the last four digits of all the columns 
-# names(df) <- str_sub(names(df), - 4, - 1)
-# names(df)
-# 
-# # rename columns 
-# # BEWARE HERE, this is manual for now, if you change the 'select' above then you need to change this as well 
-# colnames(df)[colnames(df) %in% c("tate", "lity", "code", "iome", "el_3", "el_3",  "el_4", "el_4")] <- c("state", "municipality", "geocode", "biome", 
-#                                                                                                         "from_level_3", "to_level_3",
-#                                                                                                         "from_level_4", "to_level_4")
-# names(df)
-# 
-# ## X.2) Make 'long' -----
-# # gather to make into a long dataset using pivot_longer (since gather() has been replace)
-# # NOTE: change the number if you changed 'select' above
-# ncol(df)
-# 
-# df <- pivot_longer(
-#   df,
-#   cols = 9:ncol(df),
-#   names_to = "year",
-#   values_to = "ha"
-# )
-# 
-# 
-# ## X.3) Save df -----
-# # save(df, file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
-# # NOTE: THIS INCLUDES ALL 
-# 
-# 
-# 
-# # X) Plot Transition Results -----
-# 
-# # set relevant vegetation class categories
-# list_from_lv3 <- c("Forest Formation", "Savanna Formation", "Wetland",
-#                    "Grassland", "Pasture", "Forest Plantation",
-#                    "Mosaic of Agriculture and Pasture",
-#                    "Magrove", "Flooded Forest",
-#                    "Shrub Restinga", "Other Non Forest Natural Formation", "Wooded Restinga",
-#                    "Perennial Crops")
-# 
-# # filter Mapbiomas data to only focus on transitions to "Soybeans" & From-To's that do not stay the same
-# df <- df %>%
-#   filter(to_level_4 == "Soy Beans") %>%
-#   filter(to_level_4 != from_level_4)
-# 
-# ## X.1) Facet Map of Cerrado Transition ----
-# 
-# ### X.1.1) Prep Spatial Data ---------
-# 
-# # NOTE: Municipality & Cerrado Shapefiles come from 'geobr' package
-# 
-# # Load municipality shapefile
-# # Read all municipalities in the country at a given year
-# # shp_muni <- read_municipality(code_muni="all", year=2018)
-# 
-# # Load Other Shapefiles 
-# # load(paste0(folder_derived, "shp_usbr.RData"))
-# 
-# # shp_cerr <- read_biomes(
-# #   year = 2019,
-# #   simplified = T,
-# #   showProgress = T) %>%
-# #   dplyr::filter(name_biome == "Cerrado")
-# 
-# # Old way: get municipalities that are at all within the Cerrado
-# # shp_muni_in_cerr <- st_intersection(shp_muni, shp_cerr)
-# 
-# # New way: get municipalities that are at all within the Cerrado
-# shp_muni_cerrado <- shp_muni %>%
-#   filter(lengths(st_intersects(geometry, shp_cerr)) > 0)
-# 
-# # get just the codes column and keep as shapefile
-# # shp_code_muni_in_cerr <- shp_muni_in_cerr %>%  dplyr::select(code_muni)
-# shp_code_muni_in_cerr <- shp_muni_cerrado %>%  dplyr::select(code_muni)
-# 
-# # get territory codes for municipalities in intersection as numeric
-# # muni_codes_cerr <- shp_muni_in_cerr$code_muni
-# muni_codes_cerr <- shp_muni_cerrado$code_muni
-# 
-# # filter to only municipalities in Cerrado
-# df_cerr <- df %>%
-#   filter(geocode %in% muni_codes_cerr) %>%
-#   filter(biome == "Cerrado") %>% 
-#   rename(muni_id = geocode)
-
-## *3.2) Merge df from DiD with df of RVCs to filter land change per category pre-post 
-# make 'df_alltime' wide with domestic, intl, total as their own columns
 # PICK UP HERE --------------
+# *XX) Add MapBiomas Land Conversion Values to this ----------
+## NOTE: maybe use Conversion intervals >1?
+
+## GOAL: get to 'df_cerr' by:
+# 1) loading & filtering to specific above geocodes and 
+# 2) filtering to from/to levels with soybeans and RVCs
+
+### aka the land change values from relevant vegetation classes (RVCs) to soybean per year per municipality. 
+### need this to be able to filter by municipality categories A and E
+
+# 
+
+## X.1) Load in MapBiomas Transition ------
+
+# NOTE: this is from 'MSU\TC_SIMPLEG_USBR_Zenodo_v1.1\TC_SIMPLEG_USBR_Zenodo\Data_Derived'
+# Generated using 'C:\Users\Nick Manning\OneDrive - Michigan State University\Desktop\'MSU\TC_SIMPLEG_USBR_Zenodo_v1.1\TC_SIMPLEG_USBR_Zenodo\Code\3c_MapBiomas.R'
+load(file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
+
+# NOTE: THIS INCLUDES ALL 
+
+## X.2) Filter this down to relevant from/to classes ------
+# set relevant vegetation class categories
+list_from_lv3 <- c("Forest Formation", "Savanna Formation", "Wetland",
+                   "Grassland", "Pasture", "Forest Plantation",
+                   "Mosaic of Agriculture and Pasture",
+                   "Magrove", "Flooded Forest",
+                   "Shrub Restinga", "Other Non Forest Natural Formation", "Wooded Restinga",
+                   "Perennial Crops")
+# even fewer RVCs
+classes_few <- c(
+  #"Temporary Crops", 
+  "Forest Formation", "Mosaic of Agriculture and Pasture",
+  "Pasture", "Savanna Formation", "Grassland")
+
+# filter Mapbiomas data to only focus on transitions to "Soybeans" & From-To's that do not stay the same
+df <- df %>%
+  filter(to_level_4 == "Soy Beans") %>%
+  filter(to_level_4 != from_level_4)
+
+## X.3) Filter this down to relevant biomes/muni's -------
+muni_codes_cerr <- shp_muni_cerrado$code_muni
+
+
+# filter to only municipalities in Cerrado
+df_cerr <- df %>%
+  filter(geocode %in% muni_codes_cerr) %>%
+  filter(biome == "Cerrado") %>%
+  rename(muni_id = geocode)
+
+# select down to only two columns: 'muni_id' & 'ha' to make joining seamless
+df_mapb <- df_mapb %>% 
+  select('muni_id', 'ha') %>% 
+  rename(
+    ha_trans_mapb = ha
+  )
+
+## X.4) Merge df from DiD with df of RVCs to filter land change per category pre-post  ------
+
+# TO-DO: Make deforestation 'ha' be the sum of the previous X years (maybe 3? Check TRASE)
+
+# make 'df_alltime' wide with domestic, intl, total as their own columns
+df_alltime_mapb <- left_join(df_alltime, df_mapb, by = 'muni_id')
+
 # merge on df_alltime INTO df_cerr on 'year' and 'muni_id'
 ## result should be one row = one muni_id per one year per one "To-Soybean" Transition
-
+df_alltime_MapB
 
 # 4) Basic DiD -----------
 
@@ -986,7 +929,7 @@ summary(lm_area_mean_yr_ind)
 
 msummary(lm_area_mean_yr_ind, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
 
-# PICK UP HERE ###########
+# PICK UP HERE (2) ###########
 # 4) Dynamic DiD Example -------- 
 # Example Link https://bcallaway11.github.io/did/articles/did-basics.html#examples-with-simulated-data
 library(did) # manually type step-by-step!
