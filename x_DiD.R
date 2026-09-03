@@ -10,7 +10,8 @@ rm(list = ls())
 
 # 0) Load Libraries & Set Paths and Constants ------------------------------------
 
-# Libraries # # # # #
+## Libraries ##########
+
 # cleaning ---
 library(readxl)
 library(dplyr)
@@ -23,11 +24,25 @@ library(sf)
 library(geobr)
 library(ggplot2)
 
-# Paths # # # # #
+## Paths ##########
 folder_source <- "../Data_Source/"
 
-# Constants # # # # 
-v_yr_map <- 2012
+## Constants ########## 
+
+# years to filter to
+v_treatment <- 2012
+v_startyr <- 2007
+v_endyr <- 2017
+
+# variables to sum across
+vars_sum <- c(
+  "def_exp",
+  "em_net_def_exp",
+  "em_gross_def_exp",
+  "trade_volume",
+  "trade_value",
+  "soy_area"
+)
 
 # 1) Load TRASE & Clean --------------------
 
@@ -52,21 +67,28 @@ glimpse(soy_df_source)
 head(soy_df_source)
 
 # get one source file with just the Cerrado and 2012-2013 to test
-soy_df_source_cerrado_2012013 <- soy_df_source %>% 
-  filter(Biome == "CERRADO") %>% 
-  filter(Year == 2012 | Year == 2013)
+# soy_df_source_cerrado_2012013 <- soy_df_source %>% 
+#   filter(Biome == "CERRADO") %>% 
+#   filter(Year == 2012 | Year == 2013)
 
-# CLEAN soy_df
-soy_df <- soy_df_source 
-soy_df <- soy_df %>% janitor::clean_names()
+# Clean soy_df
+soy_df <- soy_df_source %>% janitor::clean_names()
 
 # Clean initial soy_df
 soy_df <- soy_df %>% 
-  select(year, biome, state_of_production, municipality_of_production, municipality_of_production_trase_id,
-         country_of_first_import,
-         soy_deforestation_exposure, net_emissions_from_soy_deforestation_exposure, gross_emissions_from_soy_deforestation_exposure, 
-         trade_volume, trade_value, soy_area
-         ) %>% 
+  
+  # select relevant columns
+  select(
+    # basic info
+    year, biome, 
+    # geographic info
+    state_of_production, municipality_of_production, municipality_of_production_trase_id, country_of_first_import, 
+    # main variables of interest
+    trade_volume, soy_area,
+    # other variables      
+    trade_value, soy_deforestation_exposure, net_emissions_from_soy_deforestation_exposure, gross_emissions_from_soy_deforestation_exposure 
+  ) %>% 
+  
   rename(
     state = state_of_production,
     importer = country_of_first_import,
@@ -76,16 +98,18 @@ soy_df <- soy_df %>%
     em_net_def_exp = net_emissions_from_soy_deforestation_exposure,
     em_gross_def_exp = gross_emissions_from_soy_deforestation_exposure
   ) %>% 
-  filter(muni != "UNKNOWN") %>% 
-  # OPTIONAL: remove BR from IBGE code 
+  
+  # Convert TRASE municipality IDs to numeric IBGE codes
   mutate(
     muni_id = as.numeric(sub("^BR-", "", muni_id))
-  ) %>% 
-  # OPTIONAL: Filter to Mato Grosso
-  # filter(state == "MATO GROSSO") %>%
-  # OPTIONAL: filter to year range
-  filter(year >= 2007 & year <=2017) %>% 
-  filter(biome == "CERRADO")  
+  ) %>%
+  
+  # Keep only Cerrado municipalities within study years
+  filter(
+    muni != "UNKNOWN",
+    biome == "CERRADO",
+    between(year, v_startyr, v_endyr)
+  )
 
 # get soy_df before summarizing 
 soy_df_presummary <- soy_df %>% 
@@ -102,16 +126,11 @@ soy_df <- soy_df %>%
     muni_id,
     importer
   ) %>%
-  # XX: NOT SURE ABOUT na.rm = T !! Probably fine because this is just for the sum per variable, i.e. Importer = China for three importer groups, but 10, NA, 20, then sum = 30 rather than sum = NA  
   summarise(
-    def_exp = sum(def_exp, na.rm = TRUE),
-    em_net_def_exp = sum(em_net_def_exp, na.rm = TRUE),
-    em_gross_def_exp = sum(em_gross_def_exp, na.rm = TRUE),
-    trade_volume = sum(trade_volume, na.rm = TRUE),
-    trade_value = sum(trade_value, na.rm = TRUE),
-    soy_area = sum(soy_area, na.rm = TRUE),
+    across(all_of(vars_sum), sum, na.rm = TRUE),
     .groups = "drop"
   )
+
 
 ## 1.1) Add BR where missing to get proportions -----------
 
@@ -136,7 +155,7 @@ brazil_rows <- soy_df %>%
 # Append new rows
 soy_df <- bind_rows(soy_df, brazil_rows)
 
-# get count of rows added; should be n_brazil = 1; if ther eis an n_brazil = 2 row then something went wrong
+# get count of rows added; should be n_brazil = 1; if there is an n_brazil = 2 row then something went wrong
 soy_df %>%
   group_by(year, muni_id) %>%
   summarise(
@@ -162,23 +181,20 @@ soy_df_split <- soy_df %>%
     state,
     muni,
     muni_id,
-    destination
+    destination #important! also grouping by destination (i.e. Dom or Intl) here
   ) %>%
+  # get sum of the variables per municipality per year 
   summarise(
-    def_exp = sum(def_exp),
-    em_net_def_exp = sum(em_net_def_exp),
-    em_gross_def_exp = sum(em_gross_def_exp),
-    trade_volume = sum(trade_volume),
-    trade_value = sum(trade_value),
-    soy_area = sum(soy_area),
+    across(all_of(vars_sum), sum, na.rm = TRUE),
     .groups = "drop"
   )
 
-# make sure each municipality also has an international row
+
+# make sure each municipality also has an international row by getting all the rows with INTL yet and making one for them with everything set to 0
 intl_rows <- soy_df_split %>%
   group_by(year, biome, state, muni, muni_id) %>%
   filter(!any(destination == "INTERNATIONAL")) %>%
-  slice(1) %>%
+  slice(1) %>% # extra line just to make sure we only have 1 row per municipality
   ungroup() %>%
   mutate(
     destination = "INTERNATIONAL",
@@ -190,7 +206,7 @@ intl_rows <- soy_df_split %>%
     soy_area = 0
   )
 
-# make sure each municipality gets the sum of DOMESTIC + INTERNATIONAL
+# make sure each municipality gets the sum of DOMESTIC + INTERNATIONAL (only for those that already have an INTL row)
 total_rows <- soy_df_split %>%
   group_by(
     year,
@@ -201,15 +217,11 @@ total_rows <- soy_df_split %>%
   ) %>%
   summarise(
     destination = "TOTAL",
-    def_exp = sum(def_exp),
-    em_net_def_exp = sum(em_net_def_exp),
-    em_gross_def_exp = sum(em_gross_def_exp),
-    trade_volume = sum(trade_volume),
-    trade_value = sum(trade_value),
-    soy_area = sum(soy_area),
+    across(all_of(vars_sum), sum, na.rm = TRUE),
     .groups = "drop"
   )
-
+    
+# combine df with TOTAL data rows from above and append INTL data = 0 rows for those that don't have 
 soy_df_split <- bind_rows(soy_df_split, intl_rows, total_rows)
 
 # make sure this worked; should return n = 3
@@ -220,24 +232,38 @@ soy_df_split %>%
 
 # calculate proportion international
 soy_df_split <- soy_df_split %>%
-  group_by(year, muni_id) %>% # calculates proportion per year
+  
+  # Municipality-year international trade proportion per year (for std. dev. later)
+  group_by(year, muni_id) %>% # include muni in the group_by
   mutate(
-    prop_intl_yr = if_else(
-      sum(trade_volume) > 0, #NOTE that this avoids dividing by 0 in cases where there is no domestic or international trade, i.e. only including municipality-years where there is SOME trade
-      sum(trade_volume[destination == "INTERNATIONAL"]) /
-        sum(trade_volume[destination == "TOTAL"]),
-      NA_real_
-    )
+    prop_intl_yr = {
+      
+      intl_vol <- sum(trade_volume[destination == "INTERNATIONAL"])
+      total_vol <- sum(trade_volume[destination == "TOTAL"])
+      
+      if_else(
+        total_vol > 0,
+        intl_vol / total_vol,
+        NA_real_
+      )
+    }
   ) %>%
-  ungroup() %>% 
-  group_by(muni_id) %>% # calculates proportion over the entire timespan
+  ungroup() %>%
+  
+  # Municipality international trade proportion across entire study period (for Group A or E later)
+  group_by(muni_id) %>%
   mutate(
-    prop_intl_alltime = if_else(
-      sum(trade_volume) > 0, #NOTE that this avoids dividing by 0 in cases where there is no domestic or international trade, i.e. only including municipality-years where there is SOME trade
-      sum(trade_volume[destination == "INTERNATIONAL"]) /
-        sum(trade_volume[destination == "TOTAL"]),
-      NA_real_
-    )
+    prop_intl_alltime = {
+      
+      intl_vol <- sum(trade_volume[destination == "INTERNATIONAL"])
+      total_vol <- sum(trade_volume[destination == "TOTAL"])
+      
+      if_else(
+        total_vol > 0,
+        intl_vol / total_vol,
+        NA_real_
+      )
+    }
   ) %>%
   ungroup()
 
@@ -250,7 +276,7 @@ trade_instability <- soy_df_split %>%
     .groups = "drop"
   )
 
-# add back
+# add std. dev. to other df
 soy_df_split <- soy_df_split %>%
   left_join(trade_instability, by = "muni_id")
 
@@ -266,19 +292,6 @@ soy_df_split <- soy_df_split %>%
       prop_intl_alltime <= 0.20 & trade_instability < v_trade_inst_q1 ~ "A",
       prop_intl_alltime >= 0.80 & trade_instability < v_trade_inst_q1 ~ "E",
       TRUE ~ NA_character_
-      # prop_intl_alltime <= 0.20 ~ "A",
-      # prop_intl_alltime >= 0.80 ~ "E",
-      # TRUE ~ NA_character_
-    )
-  ) %>% 
-  mutate(
-    group_peryr = case_when(
-    prop_intl_alltime <= 0.20 & trade_instability < v_trade_inst_q1 ~ "A",
-    prop_intl_alltime >= 0.80 & trade_instability < v_trade_inst_q1 ~ "E",
-    TRUE ~ NA_character_
-    # prop_intl_yr <= 0.20 ~ "A",
-    # prop_intl_yr >= 0.80 ~ "E",
-    # TRUE ~ NA_character_
     )
   )
 
@@ -286,6 +299,8 @@ soy_df_split <- soy_df_split %>%
 
 ## 2.0) Download Spatial Data form geobr -------
 # Get Municipalities, Mato Grosso municipalities, Mato Grosso State, and Cerrado Biome boundaries
+
+# set year of data (necessary for 'geobr' package)
 v_yr_shp <- 2013 
 
 shp_muni <- read_municipality(
@@ -314,29 +329,6 @@ shp_muni_cerrado <- shp_muni %>%
   filter(lengths(st_intersects(geometry, shp_cerr)) > 0)
 
 ## 2.1) Clean & Join ------
-# Keep only 2012 and Groups A/E
-v_yr_map <- 2012
-
-df_map_yr <- soy_df_split %>%
-  filter(
-    year == v_yr_map,
-    group_peryr %in% c("A", "E")
-  ) %>%
-  distinct(muni_id, group_peryr) %>% 
-  rename(code_muni = muni_id)
-
-# join map shp files and df
-# sf_map_yr_munis <- shp_mt_munis %>%
-#   left_join(
-#     df_map_yr,
-#     by = "code_muni"
-#   )
-sf_map_yr_munis <- shp_muni_cerrado %>%
-  left_join(
-    df_map_yr,
-    by = "code_muni"
-  )
-
 # get df of alltime
 df_map_alltime <- soy_df_split %>%
   filter(
@@ -344,7 +336,7 @@ df_map_alltime <- soy_df_split %>%
   ) %>%
   distinct(muni_id, group_alltime) %>% 
   rename(code_muni = muni_id)
-  
+
 sf_map_alltime_munis <- shp_muni_cerrado %>%
   left_join(
     df_map_alltime,
@@ -360,55 +352,7 @@ colors_groups <- c(
   "E" = color_E
 )
 
-# ### 2.3.1) Map of Groups in One Year -------
-# ggplot() +
-#   # set extent
-#   geom_sf(data = shp_muni_cerrado) +
-#   
-#   # Municipalities
-#   geom_sf(
-#     data = sf_map_yr_munis,
-#     aes(fill = group_peryr)#,
-#     #color = NA
-#   ) +
-#   
-#   # # Cerrado boundary
-#   # geom_sf(
-#   #   data = shp_cerr,
-#   #   fill = NA,
-#   #   color = "grey50",
-#   #   linewidth = 0.3
-#   # ) +
-#   
-#   # State outline
-#   geom_sf(
-#     data = shp_mt_state,
-#     fill = NA,
-#     color = "black",
-#     linewidth = 0.6
-#   ) +
-#   
-#   scale_fill_manual(
-#     values = c(
-#       "A" = "brown",
-#       "E" = "yellow"
-#     ),
-#     na.value = "white"
-#   ) +
-#   
-#   labs(
-#     fill = "Group",
-#     title = paste0(
-#       "Group A (>80% Domestic) and E (<20% Domestic)",
-#       "\nCerrado Municipalities", 
-#       " (", v_yr_map, ")",
-#       "\n",
-#       "Trade Instability <", v_trade_inst_q1)
-#   ) +
-#   
-#   theme_void()
-
-### 2.3.2) Map of Groups Alltime -------
+### 2.3.1) Map of Groups Alltime -------
 
 ggplot() +
   # Municipalities
@@ -454,10 +398,9 @@ ggplot() +
   
   theme_void()
 
-### 2.3.3) Get Counts --------
+### 2.3.2) Get Counts --------
 # get counts 
 sf_map_alltime_munis %>% count(group_alltime)
-sf_map_yr_munis %>% count(group_peryr)
 
 # rename alltime & 1-year for DiD
 df_alltime <- soy_df_split %>% 
@@ -465,26 +408,34 @@ df_alltime <- soy_df_split %>%
     group_alltime %in% c("A", "E")
   )
 
-df_1year <- soy_df_split %>% 
-  filter(year == v_yr_map) %>% 
-  filter(
-    group_alltime %in% c("A", "E")
-  )
+## 2.3.3) SAVE --------- 
+# Save to CSV
+write.csv(
+  df_alltime,
+  "../Data_Derived/df_did_propalltime.csv",
+  row.names = FALSE
+)
 
-# # *3) Add MapBiomas Land Conversion Values to this ----------
+# Save for future R analyses
+saveRDS(
+  df_alltime,
+  "../Data_Derived/df_did_propalltime.rds"
+)
+
+# # *XX) Add MapBiomas Land Conversion Values to this ----------
 # ## NOTE: maybe use Conversion intervals >1? 
 # 
-# ## *3.1) get to 'df_cerr' ----------- 
+# ## GOAL: get to 'df_cerr
 # 
 # ### aka the land change values from relevant vegetation classes (RVCs) to soybean per year per municipality. 
 # ### need this to be able to filter by municipality categories A and E
-# # 1) Load in MapBiomas Transition ------
+## X.1) Load in MapBiomas Transition ------
 # # Load collection 8 data in tabular form 
 # csv_br_trans_m <- read.csv(paste0(folder_source, "SOURCE_transonly_col8_mapbiomas_municip.csv"), encoding = "UTF-8")
 # names(csv_br_trans_m)
 # 
 # 
-# ## 1.1) Tidy -----
+# ## X.1) Tidy -----
 # 
 # df <- csv_br_trans_m
 # 
@@ -515,7 +466,7 @@ df_1year <- soy_df_split %>%
 #                                                                                                         "from_level_4", "to_level_4")
 # names(df)
 # 
-# ## 1.2) Make 'long' -----
+# ## X.2) Make 'long' -----
 # # gather to make into a long dataset using pivot_longer (since gather() has been replace)
 # # NOTE: change the number if you changed 'select' above
 # ncol(df)
@@ -528,13 +479,13 @@ df_1year <- soy_df_split %>%
 # )
 # 
 # 
-# ## 1.3) Save df -----
+# ## X.3) Save df -----
 # # save(df, file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
 # # NOTE: THIS INCLUDES ALL 
 # 
 # 
 # 
-# # 2) Plot Transition Results -----
+# # X) Plot Transition Results -----
 # 
 # # set relevant vegetation class categories
 # list_from_lv3 <- c("Forest Formation", "Savanna Formation", "Wetland",
@@ -549,9 +500,9 @@ df_1year <- soy_df_split %>%
 #   filter(to_level_4 == "Soy Beans") %>%
 #   filter(to_level_4 != from_level_4)
 # 
-# ## 2.1) Facet Map of Cerrado Transition ----
+# ## X.1) Facet Map of Cerrado Transition ----
 # 
-# ### 2.1.1) Prep Spatial Data ---------
+# ### X.1.1) Prep Spatial Data ---------
 # 
 # # NOTE: Municipality & Cerrado Shapefiles come from 'geobr' package
 # 
@@ -610,9 +561,9 @@ df_did <- df_alltime %>%
   filter(group_alltime %in% c("A", "E")) %>%   # ignore NAs
   mutate(
     period = case_when(
-      year >= 2007 & year <= 2011 ~ "pre_2012",
+      year >= v_startyr & year <= 2011 ~ "pre_2012",
       year == 2012 ~ "2012",
-      year >= 2013 & year <= 2017 ~ "post_2012"
+      year >= 2013 & year <= v_endyr ~ "post_2012"
     )
   ) 
 
@@ -624,7 +575,7 @@ summary_count_did <- df_did %>%
     values_fill = 0
   )
 
-## 3.1) Basic EXPORT plots -------
+## 3.1) (OMIT) Basic EXPORT plots -------
 
 # get and plot per group per year
 df_did_exp_sum_yr <- df_did %>%
@@ -935,7 +886,7 @@ set.seed(101)
 # Create our data
 ex_diddata <- tibble(year = sample(2002:2010, 10000, replace = T),
                      group = sample(c('TreatedGroup', 'UntreatedGroup'), 10000, replace = T)) %>% 
-  mutate(after = (year >= 2007)) %>% 
+  mutate(after = (year >= v_startyr)) %>% 
   # only let the treatment be applied to the treated group
   mutate(D = after*(group == "TreatedGroup")) %>% 
   mutate(Y = 2*D + .5*year + (group == 'TreatedGroup') + rnorm(10000)) # 2 is the "True Effect"
