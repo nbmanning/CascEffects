@@ -26,7 +26,7 @@ library(ggplot2)
 
 ## Paths ##########
 folder_source <- "../Data_Source/"
-
+folder_derived <- "../Data_Derived/"
 ## Constants ########## 
 
 # years to filter to
@@ -229,6 +229,54 @@ soy_df_split %>%
   count(year, muni_id) %>%
   count(n)
 
+# # check to see if each municipality has each year, if not, fill with 0's. This matters for the proportion step. 
+# x_missing_years <- soy_df_split %>%
+#   group_by(
+#     muni_id, destination) %>% 
+#   summarize(
+#     n_years = n_distinct(year),
+#     expected = max(year) - min(year) + 1,
+#     .groups = "drop"
+#   ) %>%
+#   filter(n_years != expected)
+# 
+# # check missing years to see if it has a chance of being 0
+# x_missing_years <- unique(x_missing_years$muni_id)
+# x_missing_soy_df_split <- soy_df_split %>% 
+#   filter(muni_id %in% x_missing_years)
+# VERDICT: do NOT change missing to 0, accept them as missing from TRASE 
+
+# soy_df_split %>%
+#   group_by(biome, state, muni, muni_id, destination) %>%
+#   summarize(
+#     n_years = n_distinct(year),
+#     missing = max(year) - min(year) + 1 - n_years,
+#     .groups = "drop"
+#   ) %>%
+#   summarize(
+#     n_groups_missing = sum(missing > 0),
+#     total_missing_years = sum(missing)
+#   )
+
+# add missing years here so each municipality has every year from 2007-2017
+soy_df_split <- soy_df_split %>%
+  group_by(
+    biome, state, muni, muni_id, destination
+  ) %>%
+  complete(
+    year = min(year):max(year),
+    fill = list(
+      def_exp = NA_real_,
+      em_net_def_exp = NA_real_,
+      em_gross_def_exp = NA_real_,
+      trade_volume = NA_real_,
+      trade_value = NA_real_,
+      soy_area = NA_real_
+    )
+  ) %>%
+  ungroup()
+
+
 
 # calculate proportion international
 soy_df_split <- soy_df_split %>%
@@ -238,8 +286,8 @@ soy_df_split <- soy_df_split %>%
   mutate(
     prop_intl_yr = {
       
-      intl_vol <- sum(trade_volume[destination == "INTERNATIONAL"])
-      total_vol <- sum(trade_volume[destination == "TOTAL"])
+      intl_vol <- sum(trade_volume[destination == "INTERNATIONAL"], na.rm = T)
+      total_vol <- sum(trade_volume[destination == "TOTAL"], na.rm = T)
       
       if_else(
         total_vol > 0,
@@ -268,17 +316,69 @@ soy_df_split <- soy_df_split %>%
   ungroup()
 
 # calculate std. dev as a substitute for trade instability - i.e. lower SD = more stable = lower trade instability
+# OLD WAY 
+# trade_instability <- soy_df_split %>%
+#   distinct(year, muni_id, prop_intl_yr) %>% # get just one muni per year rather than having one DOMESTIC and one INTERNATIONAL destination column
+#   group_by(muni_id) %>%
+#   summarise(
+#     trade_instability = sd(prop_intl_yr, na.rm = T),
+#     .groups = "drop"
+#   )
+
+# NEW WAY with filter before std. dev. calculation
 trade_instability <- soy_df_split %>%
-  distinct(year, muni_id, prop_intl_yr) %>% # get just one muni per year rather than having one DOMESTIC and one INTERNATIONAL destination column
+  distinct(muni_id, year, prop_intl_yr) %>%
   group_by(muni_id) %>%
-  summarise(
-    trade_instability = sd(prop_intl_yr),
-    .groups = "drop"
+  # Check to see if >= 6 (of a possible 11) of the years are there 
+  summarize(
+    n_valid_years = sum(!is.na(prop_intl_yr)),
+    sd_prop_intl = ifelse(
+      n_valid_years >= 6,
+      sd(prop_intl_yr, na.rm = TRUE),
+      NA
+    )
   )
 
 # add std. dev. to other df
 soy_df_split <- soy_df_split %>%
   left_join(trade_instability, by = "muni_id")
+
+# way to check missing - won't work if I filter beforehand  
+# soy_df_split %>%
+#   distinct(muni_id, year, prop_intl_yr) %>%
+#   summarize(
+#     total_muni_years = n(),
+#     valid_props = sum(!is.na(prop_intl_yr)),
+#     missing_props = sum(is.na(prop_intl_yr))
+#   )
+
+munis_missing <- soy_df_split_full %>%
+  distinct(muni_id, year, prop_intl_yr) %>%
+  group_by(muni_id) %>%
+  summarize(
+    n_years = n(),
+    n_missing = sum(is.na(prop_intl_yr)),
+    prop_missing = n_missing / n_years
+  ) %>%
+  arrange(desc(prop_missing))
+
+# check missing 
+missing_full <- soy_df_split_full %>%
+  group_by(muni_id) %>%
+  summarize(
+    n_years = n_distinct(year),
+    n_prop = sum(!is.na(prop_intl_yr))
+  )
+
+missing_full2 <- soy_df_split_full %>%
+  distinct(muni_id, year, prop_intl_yr) %>%
+  group_by(muni_id) %>%
+  summarize(
+    total_years = n(),
+    valid_years = sum(!is.na(prop_intl_yr)),
+    missing_years = sum(is.na(prop_intl_yr))
+  ) %>% 
+  filter(missing_years != 0)
 
 # create groups based on da Silva et al., 2023: https://doi.org/10.1038/s41598-023-38405-1
 # NOTE: right now we make this grouped by each ROW independently, i.e. by each year, however, we may want to split this by MUNICIPALITY over time based on average split per- and post-shock  
@@ -433,19 +533,18 @@ saveRDS(
 ### aka the land change values from relevant vegetation classes (RVCs) to soybean per year per municipality. 
 ### need this to be able to filter by municipality categories A and E
 
-# 
-
 ## X.1) Load in MapBiomas Transition ------
 
 # NOTE: this is from 'MSU\TC_SIMPLEG_USBR_Zenodo_v1.1\TC_SIMPLEG_USBR_Zenodo\Data_Derived'
 # Generated using 'C:\Users\Nick Manning\OneDrive - Michigan State University\Desktop\'MSU\TC_SIMPLEG_USBR_Zenodo_v1.1\TC_SIMPLEG_USBR_Zenodo\Code\3c_MapBiomas.R'
 load(file = paste0(folder_derived, "mapb_col8_clean_long.Rdata"))
+df_mapb_der <- df
 
 # NOTE: THIS INCLUDES ALL 
 
 ## X.2) Filter this down to relevant from/to classes ------
-# set relevant vegetation class categories
-list_from_lv3 <- c("Forest Formation", "Savanna Formation", "Wetland",
+# set relevant vegetation class (RVCs) categories
+rvc_from_lvl3 <- c("Forest Formation", "Savanna Formation", "Wetland",
                    "Grassland", "Pasture", "Forest Plantation",
                    "Mosaic of Agriculture and Pasture",
                    "Magrove", "Flooded Forest",
@@ -458,37 +557,112 @@ classes_few <- c(
   "Pasture", "Savanna Formation", "Grassland")
 
 # filter Mapbiomas data to only focus on transitions to "Soybeans" & From-To's that do not stay the same
-df <- df %>%
+df_rvc <- df %>%
   filter(to_level_4 == "Soy Beans") %>%
-  filter(to_level_4 != from_level_4)
+  filter(to_level_4 != from_level_4) %>% 
+  filter(from_level_3 %in% rvc_from_lvl3)
 
 ## X.3) Filter this down to relevant biomes/muni's -------
 muni_codes_cerr <- shp_muni_cerrado$code_muni
 
 
 # filter to only municipalities in Cerrado
-df_cerr <- df %>%
+df_rvc <- df_rvc %>%
   filter(geocode %in% muni_codes_cerr) %>%
   filter(biome == "Cerrado") %>%
   rename(muni_id = geocode)
 
+# group_by 
+df_rvc_agg <- df_rvc %>%
+  aggregate(ha ~ year + muni_id, sum) %>%
+  mutate(
+    biome = "CERRADO",
+    from_level_3 = "Sum of RVCs",
+    to_level_4 = "Soy Beans",
+    year = as.numeric(year),
+    years = paste0(year-1,"-",year)
+  )
+
+## TO-DO (?) Change 1 year to 3-year rolling sum ----------
+# check if each has municipality has all the years
+df_rvc_agg %>%
+  group_by(
+    muni_id, biome,
+    from_level_3, to_level_4
+  ) %>%
+  summarize(
+    n_years = n_distinct(year),
+    expected = max(year) - min(year) + 1,
+    .groups = "drop"
+  ) %>%
+  filter(n_years != expected)
+
+# add missing years so taht we can get the 3-year rolling sum for transition values
+library(tidyr)
+df_rvc_agg_full <- df_rvc_agg %>%
+  group_by(
+    muni_id, biome,
+    from_level_3, to_level_4
+  ) %>%
+  complete(year = min(year):max(year),
+           fill = list(ha = 0)) %>%
+  ungroup()
+
+# get the 3 year rolling sum
+df_3yr <- df_rvc_agg_full %>%
+  arrange(year.by_group = TRUE) %>%
+  group_by(
+    muni_id, biome,
+    from_level_3, to_level_4
+  ) %>%
+  # coalesce 
+  mutate(
+    ha_3yr =
+      coalesce(ha, 0) +
+      coalesce(lag(ha, 1), 0) +
+      coalesce(lag(ha, 2), 0)
+  ) %>%
+  ungroup()
+
+# double-check manually 
+# df_3yr %>%
+#   filter(
+#     muni_id == 5200050,
+#   ) %>%
+#   select(year, ha, ha_3yr)
+
+# select only those columns necessary for joining
+df_3yr <- df_3yr %>% select(year, muni_id, ha_3yr)
+
 # select down to only two columns: 'muni_id' & 'ha' to make joining seamless
-df_mapb <- df_mapb %>% 
-  select('muni_id', 'ha') %>% 
+df_mapb <- df_rvc_agg_full %>% 
+  left_join(df_3yr, by = c('year', 'muni_id')) %>% 
+  filter(year >= v_startyr & year <= v_endyr) %>% 
+  select('year', 'muni_id', 'ha', 'ha_3yr') %>% 
   rename(
-    ha_trans_mapb = ha
+    ha_trans_mapb = ha,
+    ha_3yr_trans_mapb = ha_3yr
   )
 
 ## X.4) Merge df from DiD with df of RVCs to filter land change per category pre-post  ------
 
-# TO-DO: Make deforestation 'ha' be the sum of the previous X years (maybe 3? Check TRASE)
+# double-check df_alltime has all years 
+df_alltime %>%
+  group_by(
+    muni_id, destination) %>% 
+  summarize(
+    n_years = n_distinct(year),
+    expected = max(year) - min(year) + 1,
+    .groups = "drop"
+  ) %>%
+  filter(n_years != expected)
 
 # make 'df_alltime' wide with domestic, intl, total as their own columns
-df_alltime_mapb <- left_join(df_alltime, df_mapb, by = 'muni_id')
+df_alltime_mapb <- left_join(df_alltime, df_mapb, by = c('year', 'muni_id'))
 
 # merge on df_alltime INTO df_cerr on 'year' and 'muni_id'
 ## result should be one row = one muni_id per one year per one "To-Soybean" Transition
-df_alltime_MapB
+df_alltime_mapb
 
 # 4) Basic DiD -----------
 
