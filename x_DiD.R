@@ -872,132 +872,8 @@ plot_annual_summary(
   mean
 )
 
-plot_annual_summary(
-  df_alltime_mapb,
-  "ha_trans_mapb",
-  mean
-)
 
-
-## 3.1) (OMIT) Basic EXPORT plots -------
-
-# get and plot per group per year
-df_did_exp_sum_yr <- df_did %>%
-  filter(destination == "TOTAL") %>%
-  group_by(group_alltime, period, year) %>%
-  summarise(
-    total_exports = sum(trade_volume, na.rm = TRUE),
-    .groups = "drop"
-  ) 
-
-df_did_exp_mean_yr <- df_did %>%
-  filter(destination == "TOTAL") %>%
-  group_by(group_alltime, period, year) %>%
-  summarise(
-    mean_exports = mean(trade_volume, na.rm = TRUE),
-    .groups = "drop"
-  ) 
-
-### PLOT ###
-ggplot(
-  df_did_exp_mean_yr,
-  aes(
-    x = year,
-    y = mean_exports,
-    group = group_alltime,
-    color = group_alltime
-  )
-) +
-  geom_line() +
-  geom_point(size = 3)+
-  geom_vline(xintercept = 2012) +
-  scale_x_continuous(
-    breaks = seq(v_startyr, v_endyr, by = 1)
-  )
-
-# get just the relevant trade volume and create the DiD groups 
-
-# filter mean
-df_did_exp_mean <- df_did %>%
-  filter(destination == "TOTAL") %>%
-  group_by(group_alltime, period) %>%
-  summarise(
-    mean_exports = mean(trade_volume, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-
-# Create DF
-df_did_exp_mean_plot <- df_did_exp_mean %>% 
-  filter(period != "2012") %>% 
-  mutate(
-    period = factor(
-      period,
-      levels = c("pre_2012", "2012", "post_2012")
-    )
-  )
-
-# Plot
-## Plot mean
-ggplot(
-  df_did_exp_mean_plot,
-  aes(
-    x = period,
-    y = mean_exports,
-    color = group_alltime,
-    group = group_alltime
-  )
-) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 3) +
-  labs(
-    x = NULL,
-    y = "Mean Trade Volume",
-    color = "Group",
-    title = "Mean Soybean Exports by Group Through Time"
-  ) +
-  theme_minimal()
-
-# filter sum 
-df_did_exp_sum <- df_did %>%
-  filter(destination == "TOTAL") %>%
-  group_by(group_alltime, period) %>%
-  summarise(
-    total_exports = sum(trade_volume, na.rm = TRUE),
-    .groups = "drop"
-  ) 
-
-# create sum df
-df_did_exp_sum_plot <- df_did_exp_sum %>% 
-  filter(period != "2012") %>% 
-  mutate(
-    period = factor(
-      period,
-      levels = c("pre_2012", "2012", "post_2012")
-    )
-  )
-
-# Plot sum df
-ggplot(
-  df_did_exp_sum_plot,
-  aes(
-    x = period,
-    y = total_exports,
-    color = group_alltime,
-    group = group_alltime
-  )
-) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 3) +
-  labs(
-    x = NULL,
-    y = "Total Trade Volume",
-    color = "Group",
-    title = "Total Soybean Exports by Group Through Time"
-  ) +
-  theme_minimal()
-
-## PICK UP HERE 3.2.0) TEST Basic DiD Plots with function ----
+## 3.2.0) Basic DiD Plots with function ----
 plot_period_summary <- function(df, var, fun) {
   
   # Get names for labels
@@ -1061,10 +937,13 @@ plot_period_summary(
   mean
 )
 
+## 3.3) Manual Plotting -------
+### 3.3.1) Sum then Mean (OLD) -----
+# Muni --SUM--> Year --MEAN--> Period
+# sum per year then mean
+# get just the relevant area and create the DiD groups 
 
-## 3.2) Basic SOY AREA plots -------
-
-# get and plot per group per year
+# sum per year per export group 
 df_did_area_sum_yr <- df_did %>%
   filter(destination == "TOTAL") %>%
   group_by(group_alltime, period, year) %>%
@@ -1073,55 +952,7 @@ df_did_area_sum_yr <- df_did %>%
     .groups = "drop"
   ) 
 
-df_did_area_mean_yr <- df_did %>%
-  filter(destination == "TOTAL") %>%
-  group_by(group_alltime, period, year) %>%
-  summarise(
-    mean_area = mean(soy_area, na.rm = TRUE),
-    .groups = "drop"
-  ) 
-
-
-### PLOT ###
-
-ggplot(
-  df_did_area_sum_yr,
-  aes(
-    x = year,
-    y = total_area,
-    group = group_alltime,
-    color = group_alltime
-  )
-) +
-  geom_line() +
-  scale_color_manual(values = colors_groups, breaks = c("E", "A"))+
-  geom_point(size = 3)+
-  geom_vline(xintercept = 2012) + 
-  scale_x_continuous(breaks = seq(min(df_did_area_sum_yr$year), max(df_did_area_sum_yr$year), by = 1))+
-  labs(
-    title = "Annual Soybean Area per Export Group",
-    y = "Total Area (ha)",
-    color = "Export Group"
-  )+
-  theme_light()
-
-# get just the relevant trade volume and create the DiD groups 
-df_did_area_sum <- df_did %>%
-  filter(destination == "TOTAL") %>%
-  group_by(group_alltime, period) %>%
-  summarise(
-    total_area = sum(soy_area, na.rm = TRUE),
-    .groups = "drop"
-  ) 
-
-df_did_area_mean <- df_did %>%
-  filter(destination == "TOTAL") %>%
-  group_by(group_alltime, period) %>%
-  summarise(
-    mean_area = mean(soy_area, na.rm = TRUE),
-    .groups = "drop"
-  )
-
+# calculate the mean -- doesn't actually do anything??
 df_did_area_mean_sumyr <- df_did_area_sum_yr %>%
   group_by(group_alltime, period) %>%
   summarise(
@@ -1129,56 +960,7 @@ df_did_area_mean_sumyr <- df_did_area_sum_yr %>%
     .groups = "drop"
   ) 
 
-# sum per year then mean
-# get just the relevant area and create the DiD groups 
-df_did_area_sum_yr <- df_did %>%
-  filter(destination == "TOTAL") %>%
-  group_by(group_alltime, period) %>%
-  summarise(
-    total_area = sum(soy_area, na.rm = TRUE),
-    .groups = "drop"
-  ) 
-
-df_did_area_mean <- df_did %>%
-  filter(destination == "TOTAL") %>%
-  group_by(group_alltime, period) %>%
-  summarise(
-    mean_area = mean(soy_area, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-
-
-# Test Plot
-
-# Create DF
-df_did_area_mean_plot <- df_did_area_mean %>% 
-  filter(period != "2012") %>% 
-  mutate(
-    period = factor(
-      period,
-      levels = c("pre_2012", "2012", "post_2012")
-    )
-  )
-
-df_did_area_sum_plot <- df_did_area_sum %>% 
-  filter(period != "2012") %>% 
-  mutate(
-    period = factor(
-      period,
-      levels = c("pre_2012", "2012", "post_2012")
-    )
-  )
-
-df_did_area_sumyr_plot <- df_did_area_sum_yr %>% 
-  filter(period != "2012") %>% 
-  mutate(
-    period = factor(
-      period,
-      levels = c("pre_2012", "2012", "post_2012")
-    )
-  ) 
-
+# get into the right format for easy plotting  
 df_did_area_mean_sumyr_plot <- df_did_area_mean_sumyr %>% 
   filter(period != "2012") %>% 
   mutate(
@@ -1187,49 +969,6 @@ df_did_area_mean_sumyr_plot <- df_did_area_mean_sumyr %>%
       levels = c("pre_2012", "2012", "post_2012")
     )
   ) 
-
-# Plot
-## Plot mean
-ggplot(
-  df_did_area_mean_plot,
-  aes(
-    x = period,
-    y = mean_area,
-    color = group_alltime,
-    group = group_alltime
-  )
-) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 3) +
-  scale_color_manual(values = colors_groups, breaks = c("E", "A"))+
-  labs(
-    x = NULL,
-    y = "Mean Soy Area",
-    color = "Group",
-    title = "Mean Soybean Area by Group Through Time"
-  ) +
-  theme_minimal()
-
-## Plot sum
-ggplot(
-  df_did_area_sum_plot,
-  aes(
-    x = period,
-    y = total_area,
-    color = group_alltime,
-    group = group_alltime
-  )
-) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 3) +
-  scale_color_manual(values = colors_groups, breaks = c("E", "A"))+
-  labs(
-    x = NULL,
-    y = "Total Soybean Area",
-    color = "Group",
-    title = "Total Soybean Area by Group Through Time"
-  ) +
-  theme_minimal()
 
 ## Plot mean of sumyr
 ggplot(
@@ -1248,7 +987,145 @@ ggplot(
     x = NULL,
     y = "Mean Soy Area",
     color = "Export Group",
+    title = "Sum-then-Mean Soybean Area by Group Through Time"
+    #title = "Difference in Mean Annual Soybean Area by Group"
+  ) +
+  theme_light()
+
+### 3.3.2) Mean then Mean -----
+# Muni --Mean--> Year --MEAN--> Period
+# mean per year then mean
+# takes care of differences in group size between E and A
+# get just the relevant area and create the DiD groups 
+
+# mean per year per export group 
+df_did_area_mean_yr <- df_did %>%
+  filter(destination == "TOTAL") %>%
+  group_by(group_alltime, period, year) %>%
+  summarise(
+    total_area = mean(soy_area, na.rm = TRUE),
+    .groups = "drop"
+  ) 
+
+# calculate the mean 
+df_did_area_mean_meanyr <- df_did_area_mean_yr %>%
+  group_by(group_alltime, period) %>%
+  summarise(
+    mean_area = mean(total_area, na.rm = TRUE),
+    .groups = "drop"
+  ) 
+
+# get into the right format for easy plotting  
+df_did_area_mean_meanyr_plot <- df_did_area_mean_meanyr %>% 
+  filter(period != "2012") %>% 
+  mutate(
+    period = factor(
+      period,
+      levels = c("pre_2012", "2012", "post_2012")
+    )
+  ) 
+
+## Plot mean of sumyr
+ggplot(
+  df_did_area_mean_meanyr_plot,
+  aes(
+    x = period,
+    y = mean_area,
+    color = group_alltime,
+    group = group_alltime
+  )
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  scale_color_manual(values = colors_groups, breaks = c("E", "A"))+
+  labs(
+    x = NULL,
+    y = "Mean Soy Area",
+    color = "Export Group",
     # title = "Sum-then-Mean Soybean Area by Group Through Time"
+    title = "Difference in Mean Annual Soybean Area by Group"
+  ) +
+  theme_light()
+
+### 3.3.3) Plot Counterfactual -------
+# Get the values needed
+a_pre <- df_did_area_mean_meanyr_plot %>%
+  filter(group_alltime == "A",
+         period == "pre_2012") %>%
+  pull(mean_area)
+
+a_post <- df_did_area_mean_meanyr_plot %>%
+  filter(group_alltime == "A",
+         period == "post_2012") %>%
+  pull(mean_area)
+
+e_pre <- df_did_area_mean_meanyr_plot %>%
+  filter(group_alltime == "E",
+         period == "pre_2012") %>%
+  pull(mean_area)
+
+# Apply A's change to E's starting value
+e_counterfactual_post <- e_pre + (a_post - a_pre)
+
+# Create data frame for plotting
+df_counterfactual <- tibble(
+  period = factor(
+    c("pre_2012", "post_2012"),
+    levels = c("pre_2012", "post_2012")
+  ),
+  mean_area = c(
+    e_pre,
+    e_counterfactual_post
+  ),
+  group_alltime = "E Counterfactual"
+)
+
+# append to plotting data 
+df_did_area_mean_meanyr_plot_cf <- bind_rows(
+  df_did_area_mean_meanyr_plot,
+  df_counterfactual
+)
+
+# plot 
+ggplot(
+  df_did_area_mean_meanyr_plot_cf,
+  aes(
+    x = period,
+    y = mean_area,
+    group = group_alltime
+  )
+) +
+  geom_line(
+    aes(
+      color = group_alltime,
+      linetype = group_alltime
+    ),
+    linewidth = 1
+  ) +
+  geom_point(
+    aes(color = group_alltime),
+    size = 3
+  ) +
+  scale_color_manual(
+    values = c(
+      "A" = colors_groups[["A"]],
+      "E" = colors_groups[["E"]],
+      "E Counterfactual" = "black"
+    )
+  ) +
+  scale_linetype_manual(
+    values = c(
+      "A" = "solid",
+      "E" = "solid",
+      "E Counterfactual" = "dashed"
+    ))+
+  guides(
+    linetype = "none"   # removes second legend
+  ) +
+  labs(
+    x = NULL,
+    y = "Mean Soy Area",
+    color = "Export Group",
     title = "Difference in Mean Annual Soybean Area by Group"
   ) +
   theme_light()
@@ -1285,7 +1162,7 @@ DID
 # now, get before-after differences for both groups
 ex_means <- ex_diddata %>% group_by(group, after) %>% summarize(Y=mean(Y))
 
-ex_means2 <- df_did_area_mean_sumyr_plot %>% 
+ex_means2 <- df_did_area_mean_meanyr_plot %>% 
   mutate(group = ifelse(group_alltime == "A", "UntreatedGroup", "TreatedGroup"),
          after = ifelse(period == "pre_2012", F, T))
 
@@ -1300,6 +1177,17 @@ DID <- ex_bef.aft.treated - ex_bef.aft.untreated
 DID
 
 ## EX: Regression DiD -------
+
+### PICK UP HERE ------
+
+# clean code once more then... 
+# ...Write results and send to Ken??? 
+# regression results look, really interesting???
+
+# need to check parallel trends assumption more rigorously
+
+# SOURCE: The Effect, Huntington-Klein
+# Link: https://theeffectbook.net/ch-DifferenceinDifference.html#two-way-fixed-effects
 library(tidyverse)
 library(modelsummary)
 library(fixest)
@@ -1321,6 +1209,7 @@ msummary(clfe, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
 
 # My Attempt with all muni's
 area_allmuni <- df_did %>% 
+  filter(destination == "TOTAL") %>% 
   mutate(
     Treated = group_alltime == "E" &
       period == "post_2012"
@@ -1341,13 +1230,13 @@ area_mean_yr <- df_did_area_mean_yr %>%
     # year > 2012
   )
 
-clfe_area_mean_yr <- feols(mean_area ~ Treated | group_alltime + period,
+clfe_area_mean_yr <- feols(total_area ~ Treated | group_alltime + period,
                            data = area_mean_yr, vcov = ~period)
 
 msummary(clfe_area_mean_yr, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
 
 # run basic linear model with interaction terms 
-lm_area_mean_yr <- lm(mean_area ~ group_alltime + period + Treated, data = area_mean_yr)
+lm_area_mean_yr <- lm(total_area ~ group_alltime + period + Treated, data = area_mean_yr)
 summary(lm_area_mean_yr)
 
 # run linear model with indicator variables
@@ -1355,7 +1244,7 @@ area_mean_yr_ind <- area_mean_yr %>%
   mutate(Ind_TreatmentGroup = if_else(group_alltime == "E", 1, 0)) %>% 
   mutate(Ind_Period = if_else(period == "post_2012", 1, 0))
 
-lm_area_mean_yr_ind <- lm(mean_area ~ Ind_TreatmentGroup + Ind_Period + Ind_TreatmentGroup*Ind_Period, data = area_mean_yr_ind)
+lm_area_mean_yr_ind <- lm(total_area ~ Ind_TreatmentGroup + Ind_Period + Ind_TreatmentGroup*Ind_Period, data = area_mean_yr_ind)
 summary(lm_area_mean_yr_ind)
 
 msummary(lm_area_mean_yr_ind, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
