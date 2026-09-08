@@ -594,7 +594,12 @@ ggplot() +
                    "-",
                    max(soy_df_split$year), ")",
                    "\n",
-                   "Trade Instability <", v_trade_inst_q1)
+                   "Trade Instability <", v_trade_inst_q1,
+                   "\n",
+                   "Mean Intl. Trade >", x_intl_volume_threshold," (Group E)",
+                   "\n",
+                   "Three Valid Years from Pre (2007-2011) and Post (2013-2017) Periods"
+                   )
   ) +
   
   theme_void()
