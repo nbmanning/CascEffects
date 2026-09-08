@@ -27,6 +27,8 @@ library(ggplot2)
 ## Paths ##########
 folder_source <- "../Data_Source/"
 folder_derived <- "../Data_Derived/"
+
+
 ## Constants ########## 
 
 # years to filter to
@@ -111,10 +113,10 @@ soy_df <- soy_df %>%
     between(year, v_startyr, v_endyr)
   )
 
-# get soy_df before summarizing 
-soy_df_presummary <- soy_df %>% 
-  filter(biome == "CERRADO") %>% 
-  filter(year == 2012 | year == 2013)
+# get soy_df before summarizing - only 2012 and 2013
+# soy_df_presummary <- soy_df %>% 
+#   filter(biome == "CERRADO") %>% 
+#   filter(year == 2012 | year == 2013)
 
 # get one muni-year-importer value (because we didn't select the 'importer group' column)
 soy_df <- soy_df %>%
@@ -126,6 +128,7 @@ soy_df <- soy_df %>%
     muni_id,
     importer
   ) %>%
+  # NOTE: see 'constants' section for list of what the variables are
   summarise(
     across(all_of(vars_sum), sum, na.rm = TRUE),
     .groups = "drop"
@@ -190,7 +193,7 @@ soy_df_split <- soy_df %>%
   )
 
 
-# make sure each municipality also has an international row by getting all the rows with INTL yet and making one for them with everything set to 0
+# make sure each municipality also has an international row by getting all the rows with INTL and making one for them with everything set to 0
 intl_rows <- soy_df_split %>%
   group_by(year, biome, state, muni, muni_id) %>%
   filter(!any(destination == "INTERNATIONAL")) %>%
@@ -208,6 +211,7 @@ intl_rows <- soy_df_split %>%
 
 # make sure each municipality gets the sum of DOMESTIC + INTERNATIONAL (only for those that already have an INTL row)
 total_rows <- soy_df_split %>%
+  # don't include destination in the group_by() so we can get the TOTAL value
   group_by(
     year,
     biome,
@@ -215,6 +219,7 @@ total_rows <- soy_df_split %>%
     muni,
     muni_id
   ) %>%
+  # calculate total
   summarise(
     destination = "TOTAL",
     across(all_of(vars_sum), sum, na.rm = TRUE),
@@ -264,7 +269,7 @@ soy_df_split <- soy_df_split %>%
     biome, state, muni, muni_id, destination
   ) %>%
   complete(
-    year = min(year):max(year),
+    year = v_startyr:v_endyr,
     fill = list(
       def_exp = NA_real_,
       em_net_def_exp = NA_real_,
@@ -275,8 +280,6 @@ soy_df_split <- soy_df_split %>%
     )
   ) %>%
   ungroup()
-
-
 
 # calculate proportion international
 soy_df_split <- soy_df_split %>%
@@ -303,8 +306,10 @@ soy_df_split <- soy_df_split %>%
   mutate(
     prop_intl_alltime = {
       
-      intl_vol <- sum(trade_volume[destination == "INTERNATIONAL"])
-      total_vol <- sum(trade_volume[destination == "TOTAL"])
+      intl_vol <- sum(trade_volume[destination == "INTERNATIONAL"],
+                      na.rm = T)
+      total_vol <- sum(trade_volume[destination == "TOTAL"],
+                       na.rm = T)
       
       if_else(
         total_vol > 0,
@@ -314,6 +319,19 @@ soy_df_split <- soy_df_split %>%
     }
   ) %>%
   ungroup()
+
+### TO-DO: filter for municipalities exporting less than X? -----
+## Come back to this - need to figure out the groups first then I can filter
+mean_intl_volume <- soy_df_split %>%
+  filter(destination == "INTERNATIONAL") %>%
+  group_by(muni_id) %>%
+  summarize(
+    mean_intl_volume = mean(trade_volume, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+soy_df_split <- soy_df_split %>%
+  left_join(mean_intl_volume, by = "muni_id")
 
 # calculate std. dev as a substitute for trade instability - i.e. lower SD = more stable = lower trade instability
 # OLD WAY 
@@ -336,7 +354,44 @@ trade_instability <- soy_df_split %>%
       n_valid_years >= 6,
       sd(prop_intl_yr, na.rm = TRUE),
       NA
-    )
+    ),
+    .groups = "drop"
+  )
+
+# NEW NEW WAY with 3 valid years pre- and post-shock 
+trade_instability <- soy_df_split %>%
+  distinct(muni_id, year, prop_intl_yr) %>%
+  group_by(muni_id) %>%
+  # count number of NA values per muni per year 
+  summarize(
+    n_pre = sum(!is.na(prop_intl_yr) & year < v_treatment),
+    n_post = sum(!is.na(prop_intl_yr) & year > v_treatment),
+    
+    # what this does is filter out years that do not have at least 3/5 valid pre- and post-years
+    # NOTE: we chose 3 here, could be two! 
+    sd_prop_intl = ifelse(
+      n_pre >= 3 & n_post >= 3,
+      sd(prop_intl_yr, na.rm = TRUE),
+      NA
+    ),
+    .groups = "drop"
+  )
+
+# report the number of missing municipalities from this filter...
+trade_instability %>%
+  summarize(
+    min_pre = min(n_pre),
+    min_post = min(n_post),
+    n_pass = sum(n_pre >= 3 & n_post >= 3),
+    n_fail = sum(n_pre < 3 | n_post < 3)
+  )
+
+# ... and why they are missing (i.e. not enough pre- or not enough post-data)
+trade_instability %>%
+  filter(n_pre < 3 | n_post < 3) %>%
+  count(
+    pre_ok = n_pre >= 3,
+    post_ok = n_post >= 3
   )
 
 # add std. dev. to other df
@@ -352,48 +407,94 @@ soy_df_split <- soy_df_split %>%
 #     missing_props = sum(is.na(prop_intl_yr))
 #   )
 
-munis_missing <- soy_df_split_full %>%
-  distinct(muni_id, year, prop_intl_yr) %>%
-  group_by(muni_id) %>%
-  summarize(
-    n_years = n(),
-    n_missing = sum(is.na(prop_intl_yr)),
-    prop_missing = n_missing / n_years
-  ) %>%
-  arrange(desc(prop_missing))
-
-# check missing 
-missing_full <- soy_df_split_full %>%
-  group_by(muni_id) %>%
-  summarize(
-    n_years = n_distinct(year),
-    n_prop = sum(!is.na(prop_intl_yr))
-  )
-
-missing_full2 <- soy_df_split_full %>%
-  distinct(muni_id, year, prop_intl_yr) %>%
-  group_by(muni_id) %>%
-  summarize(
-    total_years = n(),
-    valid_years = sum(!is.na(prop_intl_yr)),
-    missing_years = sum(is.na(prop_intl_yr))
-  ) %>% 
-  filter(missing_years != 0)
-
 # create groups based on da Silva et al., 2023: https://doi.org/10.1038/s41598-023-38405-1
 # NOTE: right now we make this grouped by each ROW independently, i.e. by each year, however, we may want to split this by MUNICIPALITY over time based on average split per- and post-shock  
 # NOTE: this is TOTAL proportion, i.e. over the entire timespan
-v_trade_instab_limit <- 0.3
-v_trade_inst_q1 <- round(as.numeric(quantile(trade_instability, 0.25, na.rm = T)), 2)
 
+# first, plot the distributions of standard deviations
+# boxplot 
+ggplot(trade_instability,
+       aes(y = sd_prop_intl)) +
+  geom_boxplot()
+
+# histogram
+ggplot(trade_instability,
+       aes(x = sd_prop_intl)) +
+  geom_histogram(bins = 30)+
+  labs(
+    x = "St. Dev. of Intl. Trade Proportions Per Municipality",
+  )
+
+### Set threshold here ----------
+
+# set threshold based on 1st quartile of data ignoring SD of 0
+## "We set our threshold based on the first quartile of those municipalities with any variation in their international trade (i.e. SD != 0)"
+
+# check proportion 
+quantile(
+  # trade_instability$sd_prop_intl  # <-- results in 0, so we need to filter to > 0
+  trade_instability$sd_prop_intl[trade_instability$sd_prop_intl > 0],
+  probs = c(0.25, 0.5, 0.75),
+  na.rm = TRUE)
+
+# v_trade_instab_limit <- 0.2
+# v_trade_inst_q1 <- round(as.numeric(quantile(trade_instability$sd_prop_intl[trade_instability$sd_prop_intl > 0], 0.25, na.rm = T)), 5)
+
+v_trade_inst_q1 <- round(as.numeric(quantile(trade_instability$sd_prop_intl[trade_instability$sd_prop_intl > 0], 0.25, na.rm = T)), 3)
+
+# Pick up by removing NAs to only be left with muni's in groups A or E 
+# OLD FILTER
+# soy_df_split <- soy_df_split %>%
+#   filter(n_valid_years>=6) %>% # OLD: ONLY 6 YEARS
+#   mutate(
+#     group_alltime = case_when(
+#       prop_intl_alltime <= 0.20 & sd_prop_intl < v_trade_inst_q1 ~ "A",
+#       prop_intl_alltime >= 0.80 & sd_prop_intl < v_trade_inst_q1 ~ "E",
+#       TRUE ~ NA_character_
+#     )
+#   )
+
+# Threshold for minimum mean international trade volume
+x_intl_volume_threshold <- 1000
+
+# NEW filters
 soy_df_split <- soy_df_split %>%
+  filter(
+    n_pre >= 3,
+    n_post >= 3
+  ) %>%
   mutate(
     group_alltime = case_when(
-      prop_intl_alltime <= 0.20 & trade_instability < v_trade_inst_q1 ~ "A",
-      prop_intl_alltime >= 0.80 & trade_instability < v_trade_inst_q1 ~ "E",
+      # Group A: consistently domestic
+      prop_intl_alltime <= 0.20 &
+        sd_prop_intl < v_trade_inst_q1 ~ "A",
+      
+      # Group E: consistently international and sufficiently large exporter
+      prop_intl_alltime >= 0.80 &
+        sd_prop_intl < v_trade_inst_q1 &
+        mean_intl_volume > x_intl_volume_threshold ~ "E",
+      
       TRUE ~ NA_character_
     )
   )
+
+# ### check 2013 group E values for filtering above -----
+# x_2013 <- soy_df_split %>% 
+#   filter(year == 2013 & group_alltime == "E" & destination != "DOMESTIC")
+# 
+# x_testval <- 1000
+# x_2013_intl <- x_2013 %>% filter(destination=="INTERNATIONAL") %>% filter(trade_volume < x_testval)
+# 
+# # histogram
+# ggplot(x_2013_intl,
+#        aes(x = trade_volume)) +
+#   geom_histogram(bins = 50)+
+#   labs(
+#     x = "Intl. Trade Group E Muni's in 2013",
+#     title = paste0("Intl. Trade Group E 2013 Trade Volume filtered to < ", x_testval, 
+#                    "\n", "n = ", length(x_2013_intl))
+#   )
+
 
 # 2) Plot data pre-DiD ----------
 
@@ -512,17 +613,16 @@ df_alltime <- soy_df_split %>%
 # Save to CSV
 write.csv(
   df_alltime,
-  "../Data_Derived/df_did_propalltime.csv",
+  "../Data_Derived/df_did_propalltime_filtered.csv",
   row.names = FALSE
 )
 
 # Save for future R analyses
 saveRDS(
   df_alltime,
-  "../Data_Derived/df_did_propalltime.rds"
+  "../Data_Derived/df_did_propalltime_filtered.rds"
 )
 
-# PICK UP HERE --------------
 # *XX) Add MapBiomas Land Conversion Values to this ----------
 ## NOTE: maybe use Conversion intervals >1?
 
