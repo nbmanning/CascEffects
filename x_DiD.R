@@ -17,7 +17,8 @@ library(readxl)
 library(dplyr)
 library(purrr)
 library(stringr)
-library(janitor)
+library(janitor) # for clean_names()
+library(tidyr) # for rolling sum
 
 # plotting ---
 library(sf)
@@ -628,7 +629,7 @@ saveRDS(
   "../Data_Derived/df_did_propalltime_filtered.rds"
 )
 
-# *XX) Add MapBiomas Land Conversion Values to this ----------
+# 3) Add MapBiomas Land Conversion Values to this ----------
 ## NOTE: maybe use Conversion intervals >1?
 
 ## GOAL: get to 'df_cerr' by:
@@ -638,7 +639,7 @@ saveRDS(
 ### aka the land change values from relevant vegetation classes (RVCs) to soybean per year per municipality. 
 ### need this to be able to filter by municipality categories A and E
 
-## X.1) Load in MapBiomas Transition ------
+## 3.1) Load in MapBiomas Transition ------
 
 # NOTE: this is from 'MSU\TC_SIMPLEG_USBR_Zenodo_v1.1\TC_SIMPLEG_USBR_Zenodo\Data_Derived'
 # Generated using 'C:\Users\Nick Manning\OneDrive - Michigan State University\Desktop\'MSU\TC_SIMPLEG_USBR_Zenodo_v1.1\TC_SIMPLEG_USBR_Zenodo\Code\3c_MapBiomas.R'
@@ -647,7 +648,7 @@ df_mapb_der <- df
 
 # NOTE: THIS INCLUDES ALL 
 
-## X.2) Filter this down to relevant from/to classes ------
+## 3.2) Filter this down to relevant from/to classes ------
 # set relevant vegetation class (RVCs) categories
 rvc_from_lvl3 <- c("Forest Formation", "Savanna Formation", "Wetland",
                    "Grassland", "Pasture", "Forest Plantation",
@@ -667,7 +668,7 @@ df_rvc <- df %>%
   filter(to_level_4 != from_level_4) %>% 
   filter(from_level_3 %in% rvc_from_lvl3)
 
-## X.3) Filter this down to relevant biomes/muni's -------
+## 3.3) Filter this down to relevant biomes/muni's -------
 muni_codes_cerr <- shp_muni_cerrado$code_muni
 
 
@@ -688,8 +689,8 @@ df_rvc_agg <- df_rvc %>%
     years = paste0(year-1,"-",year)
   )
 
-## TO-DO (?) Change 1 year to 3-year rolling sum ----------
-# check if each has municipality has all the years
+## 3.4) Get 3-Year Rolling Sum ----------
+# CHECK if each has municipality has all the years
 df_rvc_agg %>%
   group_by(
     muni_id, biome,
@@ -702,8 +703,9 @@ df_rvc_agg %>%
   ) %>%
   filter(n_years != expected)
 
-# add missing years so taht we can get the 3-year rolling sum for transition values
-library(tidyr)
+# add missing years so that we can get the 3-year rolling sum for transition values
+# NOTE: we use 0 ha instead of NA here because with MapBiomas algorithm we expect there to be data present for each year. If not, then 0, not NA.
+# NOTE (cont.): Plus, 0's in missing years won't really mess with rolling sums
 df_rvc_agg_full <- df_rvc_agg %>%
   group_by(
     muni_id, biome,
@@ -720,7 +722,7 @@ df_3yr <- df_rvc_agg_full %>%
     muni_id, biome,
     from_level_3, to_level_4
   ) %>%
-  # coalesce 
+  # coalesce gets first non-missing value, so, here, it double-checks there are no NA values before summing
   mutate(
     ha_3yr =
       coalesce(ha, 0) +
@@ -735,7 +737,7 @@ df_3yr <- df_rvc_agg_full %>%
 #     muni_id == 5200050,
 #   ) %>%
 #   select(year, ha, ha_3yr)
-
+ 
 # select only those columns necessary for joining
 df_3yr <- df_3yr %>% select(year, muni_id, ha_3yr)
 
@@ -749,7 +751,7 @@ df_mapb <- df_rvc_agg_full %>%
     ha_3yr_trans_mapb = ha_3yr
   )
 
-## X.4) Merge df from DiD with df of RVCs to filter land change per category pre-post  ------
+## 3.5) Merge df from DiD with df of RVCs to filter land change per category pre-post  ------
 
 # double-check df_alltime has all years 
 df_alltime %>%
@@ -767,7 +769,21 @@ df_alltime_mapb <- left_join(df_alltime, df_mapb, by = c('year', 'muni_id'))
 
 # merge on df_alltime INTO df_cerr on 'year' and 'muni_id'
 ## result should be one row = one muni_id per one year per one "To-Soybean" Transition
-df_alltime_mapb
+glimpse(df_alltime_mapb)
+head(df_alltime_mapb)
+
+## 3.6) SAVE --------- 
+# Save to CSV
+write.csv(
+  df_alltime_mapb,
+  "../Data_Derived/df_did_propalltime_mapb_filtered.csv",
+  row.names = FALSE
+)
+
+# Save for future R analyses
+saveRDS(
+  df_alltime,
+  "../Data_Derived/df_did_propalltime_mapb_filtered.rds")
 
 # 4) Basic DiD -----------
 
@@ -779,7 +795,7 @@ df_alltime_mapb
 ### Post-Treatment is 2013-2017 average
 
 # Get groups in DiD format
-df_did <- df_alltime %>%
+df_did <- df_alltime_mapb %>%
   filter(group_alltime %in% c("A", "E")) %>%   # ignore NAs
   mutate(
     period = case_when(
@@ -790,12 +806,78 @@ df_did <- df_alltime %>%
   ) 
 
 summary_count_did <- df_did %>%
+  filter(destination == "TOTAL") %>% 
   count(group_alltime, period) %>%
   tidyr::pivot_wider(
     names_from = period,
     values_from = n,
     values_fill = 0
   )
+## 3.1.0) TEST fxn for plotting -------
+plot_annual_summary <- function(df, var, fun = mean) {
+  
+  # Get function name for labels
+  fun_name <- deparse(substitute(fun))
+  
+  # Summarize data
+  plot_df <- df %>%
+    filter(group_alltime %in% c("A", "E")) %>% 
+    group_by(year, group_alltime) %>%
+    summarize(
+      value = fun(.data[[var]], na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  # Create plot
+  ggplot(
+    plot_df,
+    aes(
+      x = year,
+      y = value,
+      group = group_alltime,
+      color = group_alltime
+    )
+  ) +
+    geom_line() +
+    geom_point(size = 3) +
+    geom_vline(xintercept = 2012) +
+    scale_x_continuous(
+      breaks = seq(v_startyr, v_endyr, by = 1)
+    ) +
+    labs(
+      title = paste0(
+        "Annual ", str_to_title(fun_name),
+        " of ", var,
+        " by Group"
+      ),
+      x = "Year",
+      y = paste0(str_to_title(fun_name), " ", var),
+      color = "Group"
+    )
+}
+
+# test fxn 
+plot_annual_summary(
+  df = df_did,
+  var = "trade_volume",
+  fun = sum
+)
+
+# now try with df_alltime_mapb 
+names(df_alltime_mapb)
+
+plot_annual_summary(
+  df_alltime_mapb,
+  "trade_volume",
+  mean
+)
+
+plot_annual_summary(
+  df_alltime_mapb,
+  "ha_trans_mapb",
+  mean
+)
+
 
 ## 3.1) (OMIT) Basic EXPORT plots -------
 
@@ -817,30 +899,25 @@ df_did_exp_mean_yr <- df_did %>%
   ) 
 
 ### PLOT ###
-
-
 ggplot(
-  df_did_exp_sum_yr,
+  df_did_exp_mean_yr,
   aes(
     x = year,
-    y = total_exports,
+    y = mean_exports,
     group = group_alltime,
     color = group_alltime
   )
 ) +
   geom_line() +
   geom_point(size = 3)+
-  geom_vline(xintercept = 2012)
+  geom_vline(xintercept = 2012) +
+  scale_x_continuous(
+    breaks = seq(v_startyr, v_endyr, by = 1)
+  )
 
 # get just the relevant trade volume and create the DiD groups 
-df_did_exp_sum <- df_did %>%
-  filter(destination == "TOTAL") %>%
-  group_by(group_alltime, period) %>%
-  summarise(
-    total_exports = sum(trade_volume, na.rm = TRUE),
-    .groups = "drop"
-  ) 
 
+# filter mean
 df_did_exp_mean <- df_did %>%
   filter(destination == "TOTAL") %>%
   group_by(group_alltime, period) %>%
@@ -849,7 +926,6 @@ df_did_exp_mean <- df_did %>%
     .groups = "drop"
   )
 
-# Test Plot
 
 # Create DF
 df_did_exp_mean_plot <- df_did_exp_mean %>% 
@@ -861,14 +937,6 @@ df_did_exp_mean_plot <- df_did_exp_mean %>%
     )
   )
 
-df_did_exp_sum_plot <- df_did_exp_sum %>% 
-  filter(period != "2012") %>% 
-  mutate(
-    period = factor(
-      period,
-      levels = c("pre_2012", "2012", "post_2012")
-    )
-  )
 # Plot
 ## Plot mean
 ggplot(
@@ -890,7 +958,26 @@ ggplot(
   ) +
   theme_minimal()
 
-## Plot sum
+# filter sum 
+df_did_exp_sum <- df_did %>%
+  filter(destination == "TOTAL") %>%
+  group_by(group_alltime, period) %>%
+  summarise(
+    total_exports = sum(trade_volume, na.rm = TRUE),
+    .groups = "drop"
+  ) 
+
+# create sum df
+df_did_exp_sum_plot <- df_did_exp_sum %>% 
+  filter(period != "2012") %>% 
+  mutate(
+    period = factor(
+      period,
+      levels = c("pre_2012", "2012", "post_2012")
+    )
+  )
+
+# Plot sum df
 ggplot(
   df_did_exp_sum_plot,
   aes(
@@ -909,6 +996,71 @@ ggplot(
     title = "Total Soybean Exports by Group Through Time"
   ) +
   theme_minimal()
+
+## PICK UP HERE 3.2.0) TEST Basic DiD Plots with function ----
+plot_period_summary <- function(df, var, fun) {
+  
+  # Get names for labels
+  df_name <- deparse(substitute(df))
+  fun_name <- deparse(substitute(fun))
+  
+  # Summarize data
+  plot_df <- df %>%
+    filter(
+      destination == "TOTAL",
+      group_alltime %in% c("A", "E")
+    ) %>%
+    group_by(group_alltime, period) %>%
+    summarize(
+      value = fun(.data[[var]], na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    filter(period != "2012") %>%
+    mutate(
+      period = factor(
+        period,
+        levels = c("pre_2012", "2012", "post_2012")
+      )
+    )
+  
+  # Plot
+  ggplot(
+    plot_df,
+    aes(
+      x = period,
+      y = value,
+      color = group_alltime,
+      group = group_alltime
+    )
+  ) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 3) +
+    labs(
+      x = NULL,
+      y = paste0(
+        stringr::str_to_title(fun_name),
+        " ",
+        var
+      ),
+      color = "Group",
+      title = paste0(
+        df_name,
+        ": ",
+        stringr::str_to_title(fun_name),
+        " ",
+        var,
+        " by Group (Pre/Post 2012)"
+      )
+    ) +
+    theme_minimal()
+}
+
+plot_period_summary(
+  df_did,
+  "soy_area",
+  mean
+)
+
 
 ## 3.2) Basic SOY AREA plots -------
 
