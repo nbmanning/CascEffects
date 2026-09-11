@@ -323,16 +323,16 @@ soy_df_split <- soy_df_split %>%
 
 ### TO-DO: filter for municipalities exporting less than X? -----
 ## Come back to this - need to figure out the groups first then I can filter
-mean_intl_volume <- soy_df_split %>%
-  filter(destination == "INTERNATIONAL") %>%
-  group_by(muni_id) %>%
-  summarize(
-    mean_intl_volume = mean(trade_volume, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-soy_df_split <- soy_df_split %>%
-  left_join(mean_intl_volume, by = "muni_id")
+# mean_intl_volume <- soy_df_split %>%
+#   filter(destination == "INTERNATIONAL") %>%
+#   group_by(muni_id) %>%
+#   summarize(
+#     mean_intl_volume = mean(trade_volume, na.rm = TRUE),
+#     .groups = "drop"
+#   )
+# 
+# soy_df_split <- soy_df_split %>%
+#   left_join(mean_intl_volume, by = "muni_id")
 
 # calculate std. dev as a substitute for trade instability - i.e. lower SD = more stable = lower trade instability
 # OLD WAY 
@@ -345,19 +345,19 @@ soy_df_split <- soy_df_split %>%
 #   )
 
 # NEW WAY with filter before std. dev. calculation
-trade_instability <- soy_df_split %>%
-  distinct(muni_id, year, prop_intl_yr) %>%
-  group_by(muni_id) %>%
-  # Check to see if >= 6 (of a possible 11) of the years are there 
-  summarize(
-    n_valid_years = sum(!is.na(prop_intl_yr)),
-    sd_prop_intl = ifelse(
-      n_valid_years >= 6,
-      sd(prop_intl_yr, na.rm = TRUE),
-      NA
-    ),
-    .groups = "drop"
-  )
+# trade_instability <- soy_df_split %>%
+#   distinct(muni_id, year, prop_intl_yr) %>%
+#   group_by(muni_id) %>%
+#   # Check to see if >= 6 (of a possible 11) of the years are there 
+#   summarize(
+#     n_valid_years = sum(!is.na(prop_intl_yr)),
+#     sd_prop_intl = ifelse(
+#       n_valid_years >= 6,
+#       sd(prop_intl_yr, na.rm = TRUE),
+#       NA
+#     ),
+#     .groups = "drop"
+#   )
 
 # NEW NEW WAY with 3 valid years pre- and post-shock 
 trade_instability <- soy_df_split %>%
@@ -1207,7 +1207,16 @@ clfe <- feols(Rate ~ Treated | State + Quarter,
 
 msummary(clfe, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
 
+# All Muni's --------
 # My Attempt with all muni's
+area_allmuni <- df_did %>% 
+  filter(destination == "TOTAL") %>% 
+  mutate(
+    Treated = group_alltime == "E" &
+      period %in% "post_2012"
+    # year > 2012
+  )
+
 area_allmuni <- df_did %>% 
   filter(destination == "TOTAL") %>% 
   mutate(
@@ -1221,6 +1230,276 @@ clfe_area_allmuni <- feols(soy_area ~ Treated | group_alltime + period,
 
 msummary(clfe_area_allmuni, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
 
+### TEST #####
+lm_test <- feols(
+  soy_area ~ Treated | muni_id + year,
+  data = area_allmuni,
+  vcov = ~muni_id
+)
+
+msummary(lm_test, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+
+# compare the regression results - pay attention to the SE section 
+etable(
+  feols(
+    soy_area ~ Treated | group_alltime + period,
+    data = area_allmuni
+  ),
+  feols(
+    soy_area ~ Treated | group_alltime + period,
+    data = area_allmuni,
+    vcov = ~period
+  )
+)
+
+# plot
+library(ggplot2)
+
+df_did %>%
+  filter(
+    destination == "TOTAL",
+    group_alltime %in% c("A", "E")
+  ) %>%
+  ggplot(
+    aes(
+      x = factor(year),
+      y = log(soy_area),
+      color = group_alltime
+    )
+  ) +
+  geom_jitter(
+    width = 0.2,
+    alpha = 0.3,
+    size = 1.5
+  ) +
+  scale_color_manual(
+    values = c(
+      "A" = "#1b9e77",
+      "E" = "#d95f02"
+    )
+  ) +
+  labs(
+    x = "Year",
+    y = "Soy area (ha)",
+    color = "Group"
+  ) +
+  theme_bw()
+
+# plot 2
+area_allmuni %>%
+  filter(
+    destination == "TOTAL",
+    group_alltime %in% c("A", "E"),
+  ) %>%
+  ggplot(
+    aes(
+      x = factor(year),
+      y = soy_area,
+      fill = group_alltime
+    )
+  ) +
+  geom_jitter(
+    width = 0.2,
+    alpha = 0.3,
+    size = 1.5
+  ) +
+  # geom_violin(
+  #   alpha = 0.5,
+  #   position = position_dodge(width = 0.8)
+  # ) +
+  geom_point(
+    stat = "summary",
+    fun = mean,
+    position = position_dodge(width = 0.8),
+    size = 2
+  )+
+  #scale_y_log10()+
+  theme_bw()
+
+
+# test ggdist()
+library(ggplot2)
+library(ggdist)
+
+area_allmuni %>%
+  filter(
+    destination == "TOTAL",
+    group_alltime %in% c("A", "E")
+  ) %>%
+  ggplot(
+    aes(
+      x = factor(year),
+      y = soy_area,
+      fill = group_alltime
+    )
+  ) +
+  stat_halfeye(
+    position = position_dodge(width = 0.8),
+    justification = -0.2,
+    alpha = 0.6,
+    width = 0.7,
+    point_interval = median_qi
+  ) +
+  scale_y_log10(labels = scales::comma) +
+  theme_bw()
+
+# NEW: with line plot
+plot_data <- function(x_df, x_y, x_fun, x_log10){
+x_df %>%
+  filter(
+    destination == "TOTAL",
+    group_alltime %in% c("A", "E")
+  ) %>%
+  ggplot(
+    aes(
+      x = factor(year),
+      y = soy_area,
+      fill = group_alltime
+    )
+  ) +
+  geom_violin(
+    alpha = 0.3,
+    width = 0.8,
+    position = position_dodge(width = 0.7)
+  ) +
+  
+  # Summary points
+  stat_summary(
+    aes(color = group_alltime),
+    fun = mean,
+    geom = "point",
+    #position = position_dodge(width = 0.8),
+    size = 2.5
+  ) +
+  
+  # Summary lines
+  stat_summary(
+    aes(
+      group = group_alltime,
+      color = group_alltime
+    ),
+    fun = mean,
+    geom = "line",
+    linewidth = 1,
+   # position = position_dodge(width = 0.8)
+  ) +
+  
+  if_else(x_log10 = T, 
+          scale_y_log10(labels = scales::comma))
+           +
+  theme_bw()+
+  labs(
+    title = paste0("Annual ", x_fun, " of ", x_y,
+                   ifelse(
+                     x_log10 = T, "Log10"
+                   ))
+  )
+}
+
+plot_data(
+  x_df = area_allmuni,
+  x_y = "soy_area",
+  x_fun = "mean",
+  x_log10 = TRUE
+)
+
+
+plot_data <- function(
+    x_df,
+    x_y,
+    x_fun,
+    x_log10
+) {
+  
+  x_fun_name <- deparse(substitute(x_fun))
+  
+  p <- x_df %>%
+    filter(
+      destination == "TOTAL",
+      group_alltime %in% c("A", "E")
+    ) %>%
+    ggplot(
+      aes(
+        x = factor(year),
+        y = .data[[x_y]],
+        fill = group_alltime
+      )
+    ) +
+    geom_violin(
+      alpha = 0.3,
+      width = 0.8,
+      position = position_dodge(width = 0.7)
+    ) +
+    
+    # Summary points
+    stat_summary(
+      aes(color = group_alltime),
+      fun = x_fun,
+      geom = "point",
+      size = 2.5
+    ) +
+    
+    # Summary lines
+    stat_summary(
+      aes(
+        color = group_alltime,
+        group = group_alltime
+      ),
+      fun = x_fun,
+      geom = "line",
+      linewidth = 1
+    ) + 
+    
+    geom_vline(
+      xintercept = factor(2012),
+      linetype = "dashed",
+      lwd = 1.5,
+      color = "black") +
+    
+    theme_bw() +
+    labs(
+      title = paste0(
+        "Annual ",
+        x_fun_name,
+        " of ",
+        x_y
+      ),
+      x = "",
+      y = x_y,
+      fill = "Group",
+      color = "Group"
+    )+
+    theme(legend.position = "bottom")
+  
+  
+  if (x_log10) {
+    p <- p +
+      scale_y_log10(labels = scales::comma)
+  }
+  
+  return(p)
+}
+
+plot_data(
+  x_df = area_allmuni,
+  x_y = "soy_area",
+  x_fun = mean,
+  x_log10 = T
+)
+
+plot_data(
+  x_df = area_allmuni,
+  x_y = "ha_trans_mapb",
+  x_fun = mean,
+  x_log10 = T
+)
+
+### TEST END #####
+# run basic linear model with interaction terms 
+lm_area_mean <- lm(soy_area ~ group_alltime + period + Treated, data = area_allmuni)
+summary(lm_area_mean)
+
+## Annual -------
 # My Attempt with annual data
 area_mean_yr <- df_did_area_mean_yr %>% 
   filter(period != "2012") %>% 
@@ -1249,6 +1528,19 @@ summary(lm_area_mean_yr_ind)
 
 msummary(lm_area_mean_yr_ind, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
 
+# run linear model on mean year with indicator variables
+area_allmuni_ind <- area_allmuni %>% 
+  mutate(Ind_TreatmentGroup = if_else(group_alltime == "E", 1, 0)) %>% 
+  mutate(Ind_Period = if_else(period == "post_2012", 1, 0))
+
+lm_area_allmuni_ind <- lm(soy_area ~ Ind_TreatmentGroup + Ind_Period + Ind_TreatmentGroup*Ind_Period, data = area_allmuni_ind)
+summary(lm_area_allmuni_ind)
+
+msummary(lm_area_allmuni_ind, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+
+# run basic linear model with interaction terms 
+lm_area_mean <- lm(soy_area ~ group_alltime + period + Treated, data = area_allmuni)
+summary(lm_area_mean)
 # PICK UP HERE (2) ###########
 # 4) Dynamic DiD Example -------- 
 # Example Link https://bcallaway11.github.io/did/articles/did-basics.html#examples-with-simulated-data
