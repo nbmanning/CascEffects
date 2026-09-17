@@ -323,16 +323,17 @@ soy_df_split <- soy_df_split %>%
 
 ### TO-DO: filter for municipalities exporting less than X? -----
 ## Come back to this - need to figure out the groups first then I can filter
-# mean_intl_volume <- soy_df_split %>%
-#   filter(destination == "INTERNATIONAL") %>%
-#   group_by(muni_id) %>%
-#   summarize(
-#     mean_intl_volume = mean(trade_volume, na.rm = TRUE),
-#     .groups = "drop"
-#   )
-# 
-# soy_df_split <- soy_df_split %>%
-#   left_join(mean_intl_volume, by = "muni_id")
+mean_intl_volume <- soy_df_split %>%
+  filter(destination == "INTERNATIONAL") %>%
+  group_by(muni_id) %>%
+  summarize(
+    mean_intl_volume = mean(trade_volume, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# add mean intl. trade to df
+soy_df_split <- soy_df_split %>%
+  left_join(mean_intl_volume, by = "muni_id")
 
 # calculate std. dev as a substitute for trade instability - i.e. lower SD = more stable = lower trade instability
 # OLD WAY 
@@ -459,7 +460,7 @@ v_trade_inst_q1 <- round(as.numeric(quantile(trade_instability$sd_prop_intl[trad
 x_intl_volume_threshold <- 1000
 
 # NEW filters
-soy_df_split <- soy_df_split %>%
+soy_df_split2 <- soy_df_split %>%
   filter(
     n_pre >= 3,
     n_post >= 3
@@ -468,16 +469,25 @@ soy_df_split <- soy_df_split %>%
     group_alltime = case_when(
       # Group A: consistently domestic
       prop_intl_alltime <= 0.20 &
-        sd_prop_intl < v_trade_inst_q1 ~ "A",
+        sd_prop_intl < v_trade_inst_q1 
+      ~ "A",
       
       # Group E: consistently international and sufficiently large exporter
       prop_intl_alltime >= 0.80 &
         sd_prop_intl < v_trade_inst_q1 &
-        mean_intl_volume > x_intl_volume_threshold ~ "E",
+        mean_intl_volume > x_intl_volume_threshold 
+      ~ "E",
       
       TRUE ~ NA_character_
     )
   )
+
+# test group membership with new filters 
+table(soy_df_split2$group_alltime[soy_df_split2$destination=="TOTAL" & soy_df_split2$year==2013])
+
+# set new filters as main df
+soy_df_split <- soy_df_split2
+
 
 # ### check 2013 group E values for filtering above -----
 # x_2013 <- soy_df_split %>% 
@@ -509,10 +519,10 @@ shp_muni <- read_municipality(
   year = v_yr_shp
 )
 
-shp_mt_munis <- read_municipality(
-  code_muni = "MT",
-  year = v_yr_shp
-)
+# shp_mt_munis <- read_municipality(
+#   code_muni = "MT",
+#   year = v_yr_shp
+# )
 
 # Mato Grosso state boundary
 shp_mt_state <- read_state(
@@ -782,7 +792,7 @@ write.csv(
 
 # Save for future R analyses
 saveRDS(
-  df_alltime,
+  df_alltime_mapb,
   "../Data_Derived/df_did_propalltime_mapb_filtered.rds")
 
 # 4) Basic DiD -----------
@@ -868,8 +878,8 @@ names(df_alltime_mapb)
 
 plot_annual_summary(
   df_alltime_mapb,
-  "trade_volume",
-  mean
+  "ha_3yr_trans_mapb",
+  sum
 )
 
 
@@ -928,12 +938,13 @@ plot_period_summary <- function(df, var, fun) {
         " by Group (Pre/Post 2012)"
       )
     ) +
-    theme_minimal()
+    theme_minimal()+
+    theme(legend.position = "none")
 }
 
 plot_period_summary(
   df_did,
-  "soy_area",
+  "ha_3yr_trans_mapb",
   mean
 )
 
@@ -1062,6 +1073,11 @@ a_post <- df_did_area_mean_meanyr_plot %>%
 e_pre <- df_did_area_mean_meanyr_plot %>%
   filter(group_alltime == "E",
          period == "pre_2012") %>%
+  pull(mean_area)
+
+e_post <- df_did_area_mean_meanyr_plot %>%
+  filter(group_alltime == "E",
+         period == "post_2012") %>%
   pull(mean_area)
 
 # Apply A's change to E's starting value
