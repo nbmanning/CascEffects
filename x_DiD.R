@@ -83,7 +83,7 @@ soy_df <- soy_df %>%
   # select relevant columns
   select(
     # basic info
-    year, biome, 
+    year, biome, exporter_group,
     # geographic info
     state_of_production, municipality_of_production, municipality_of_production_trase_id, country_of_first_import, 
     # main variables of interest
@@ -119,8 +119,41 @@ soy_df <- soy_df %>%
 #   filter(biome == "CERRADO") %>% 
 #   filter(year == 2012 | year == 2013)
 
+# get proportion of soy traded in 2011 from the big 6 per municipality
+soy_df_2011 <- soy_df %>% filter(year == 2011)
+
+# Exporter groups of interest
+ls_big6 <- c(
+  "BUNGE",
+  "COFCO",
+  "CARGILL",
+  "LOUIS DREYFUS",
+  "ADM",
+  "AMAGGI",
+  "AMAGGI & LD COMMODITIES"
+)
+
+# Get proportion of municipal trade volume from these exporter groups in 2011
+soy_df_big6 <- soy_df %>%
+  filter(between(year, 2007, 2011)) %>%
+  group_by(
+    #year,
+    biome,
+    state,
+    muni,
+    muni_id
+  ) %>%
+  summarise(
+    exp_total = sum(trade_volume, na.rm = TRUE),
+    exp_big6 = sum(trade_volume[exporter_group %in% ls_big6], na.rm = TRUE),
+    exp_prop_big6 = exp_big6 / exp_total,
+    .groups = "drop"
+  ) %>% 
+  select(muni_id, exp_total, exp_big6, exp_prop_big6)
+
+
 # get one muni-year-importer value (because we didn't select the 'importer group' column)
-soy_df <- soy_df %>%
+soy_df_sum <- soy_df %>%
   group_by(
     year,
     biome,
@@ -135,6 +168,16 @@ soy_df <- soy_df %>%
     .groups = "drop"
   )
 
+# PICK UP HERE -----
+# Re-join
+# change soy_df_sum back to soy_df if it worked
+# Add >50% as a filter criteria later on 
+# re-run analysis with this criteria and the export volume > 1Q filter 
+# add result to table - maybe make a comprehensive result slide of important info? 
+# re-run without the export volume filter
+# add result to table
+
+soy_df_sum2 <- soy_df_sum %>% left_join(soy_df_big6, by = "")
 
 ## 1.1) Add BR where missing to get proportions -----------
 
@@ -171,6 +214,7 @@ soy_df %>%
 ## 1.2) Calculate proportion domestic per municipality ------
 
 # Create split Domestic/International df
+#### NOTE: soy_df_split here ###############
 soy_df_split <- soy_df %>%
   mutate(
     destination = if_else(
@@ -324,12 +368,15 @@ soy_df_split <- soy_df_split %>%
 ### TO-DO: filter for municipalities exporting less than X? -----
 ## Come back to this - need to figure out the groups first then I can filter
 mean_intl_volume <- soy_df_split %>%
-  filter(destination == "INTERNATIONAL") %>%
+  #filter(destination == "INTERNATIONAL") %>%
+  filter(destination == "INTERNATIONAL" & between(year, 2007, 2011)) %>%
   group_by(muni_id) %>%
   summarize(
     mean_intl_volume = mean(trade_volume, na.rm = TRUE),
     .groups = "drop"
   )
+
+sum(is.na(as.matrix(mean_intl_volume)))
 
 # add mean intl. trade to df
 soy_df_split <- soy_df_split %>%
@@ -457,7 +504,25 @@ v_trade_inst_q1 <- round(as.numeric(quantile(trade_instability$sd_prop_intl[trad
 #   )
 
 # Threshold for minimum mean international trade volume
-x_intl_volume_threshold <- 1000
+#x_intl_volume_threshold <- 1000
+x_intl_volume_threshold <- as.numeric(quantile(df_groupE$mean_intl_volume, 0.25))
+
+# Municipality-level data needed for Group E assignment
+df_groupE <- soy_df_split %>%
+  distinct(
+    muni_id,
+    prop_intl_alltime,
+    sd_prop_intl,
+    mean_intl_volume,
+    n_pre,
+    n_post
+  ) %>%
+  filter(
+    n_pre >= 3,
+    n_post >= 3,
+    prop_intl_alltime >= 0.80,
+    sd_prop_intl < v_trade_inst_q1
+  )
 
 # NEW filters
 soy_df_split2 <- soy_df_split %>%
@@ -484,6 +549,166 @@ soy_df_split2 <- soy_df_split %>%
 
 # test group membership with new filters 
 table(soy_df_split2$group_alltime[soy_df_split2$destination=="TOTAL" & soy_df_split2$year==2013])
+# TEST ###########
+thresh_max <- 200000
+thresh_int <- 250
+thresh_ex <- x_intl_volume_threshold
+
+# test_df_thresholds <- tibble(
+#   threshold = seq(0, thresh_max, by = thresh_int)
+# ) %>%
+#   rowwise() %>%
+#   mutate(
+#     n_groupE = trade_instability %>%
+#       left_join(
+#         mean_intl_volume,
+#         by = "muni_id"
+#       ) %>%
+#       left_join(
+#         soy_df_split %>%
+#           distinct(muni_id, prop_intl_alltime),
+#         by = "muni_id"
+#       ) %>%
+#       filter(
+#         prop_intl_alltime >= 0.80,
+#         sd_prop_intl < v_trade_inst_q1,
+#         mean_intl_volume > threshold
+#       ) %>%
+#       nrow()
+#   ) %>%
+#   ungroup()
+# 
+# ggplot(test_df_thresholds,
+#        aes(threshold, n_groupE)) +
+#   geom_line(linewidth = 1) +
+#   geom_vline(
+#     xintercept = thresh_ex,
+#     color = "red",
+#     linetype = "dashed"
+#   ) +
+#   labs(
+#     x = "Mean International Trade Volume Threshold",
+#     y = "Group E Municipalities",
+#     title = paste0("Sensitivity of Group E Sample Size to Volume Threshold",
+#                    "\n",
+#                    "Threshold Cutoff: ", thresh_ex)
+#   ) +
+#   theme_minimal()
+# 
+# 
+# # make interactive 
+# library(plotly)
+# 
+# p <- ggplot(
+#   test_df_thresholds,
+#   aes(
+#     x = threshold,
+#     y = n_groupE,
+#     text = paste0(
+#       "Threshold: ", threshold,
+#       "<br>Remaining: ", n_groupE
+#     )
+#   )
+# ) +
+#   geom_line(linewidth = 1) +
+#   geom_point(size = 2) +
+#   geom_vline(
+#     xintercept = 1000,
+#     linetype = "dashed",
+#     color = "red"
+#   ) +
+#   labs(
+#     x = "Mean International Trade Volume Threshold",
+#     y = "Municipalities Excluded",
+#     title = "Sensitivity of Municipality Inclusion to Volume Threshold"
+#   ) +
+#   theme_minimal()
+# 
+# ggplotly(p, tooltip = "text")
+
+
+
+# Evaluate a range of possible thresholds
+df_thresholds <- tibble(
+  threshold = seq(0, thresh_max, by = thresh_int)
+) %>%
+  rowwise() %>%
+  mutate(
+    n_groupE_included = sum(
+      df_groupE$mean_intl_volume > threshold,
+      na.rm = TRUE
+    ),
+    n_groupE_excluded = sum(
+      df_groupE$mean_intl_volume <= threshold,
+      na.rm = TRUE
+    )
+  ) %>%
+  ungroup()
+
+library(plotly)
+
+p <- ggplot(
+  df_thresholds,
+  aes(
+    x = threshold,
+    y = n_groupE_included,
+    text = paste0(
+      "Threshold: ", scales::comma(threshold),
+      "<br>Group E Included: ", n_groupE_included,
+      "<br>Group E Excluded: ", n_groupE_excluded
+    )
+  )
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  geom_vline(
+    xintercept = thresh_ex,
+    linetype = "dashed",
+    color = "red"
+  ) +
+  labs(
+    x = "Minimum Mean International Trade Volume",
+    y = "Group E Municipalities Included",
+    title = "Sensitivity of Group E Sample Size to Export Threshold"
+  ) +
+  theme_minimal()
+
+ggplotly(p, tooltip = "text")
+
+# boxplot to show this 
+ggplot(
+  df_groupE,
+  aes(x = "Group E", y = mean_intl_volume)
+) +
+  geom_violin(fill = "steelblue", alpha = 0.7) +
+  geom_jitter(
+    width = 0.1,
+    alpha = 0.5
+  ) +
+  geom_hline(yintercept = x_intl_volume_threshold, color = "darkgreen", linetype = "dashed") +
+  labs(
+    x = NULL,
+    y = "Mean International Trade Volume"
+  ) +
+  scale_y_log10()+
+  theme_minimal()
+
+# get quantile for filter instead 
+quantile(
+  df_groupE$mean_intl_volume,
+  probs = c(0.1, 0.25, 0.5)
+)
+
+# ggplot with lines at 10% quantile, arbitrary 1000 tonnes, and 25% quantile cutoff
+ggplot(df_groupE,
+       aes(mean_intl_volume)) +
+  geom_histogram(bins = 30) +
+  geom_vline(xintercept = quantile(df_groupE$mean_intl_volume, 0.10), color = "blue") +
+  geom_vline(xintercept = 1000, color = "red") +
+  geom_vline(xintercept = quantile(df_groupE$mean_intl_volume, 0.25), color = "darkgreen") +
+  scale_x_log10()
+
+############
 
 # set new filters as main df
 soy_df_split <- soy_df_split2
@@ -556,8 +781,18 @@ sf_map_alltime_munis <- shp_muni_cerrado %>%
   )
 
 ## 2.3) Plot Maps-------
-color_A <- "brown"
-color_E <- "gold"
+# color_A <- "brown"
+# color_E <- "gold"
+
+
+
+# colors_groups <- c(
+#   "E" = "firebrick4",
+#   "A" = "goldenrod"
+# )
+
+color_A <- "goldenrod"
+color_E <- "firebrick4"
 
 colors_groups <- c(
   "A" = color_A,
@@ -604,10 +839,14 @@ ggplot() +
                    " (", min(soy_df_split$year), 
                    "-",
                    max(soy_df_split$year), ")",
+                   
                    "\n",
                    "Trade Instability <", v_trade_inst_q1,
                    "\n",
-                   "Mean Intl. Trade >", x_intl_volume_threshold," (Group E)",
+                   "Mean 2007-2011 Intl. Trade >", 
+                   round(x_intl_volume_threshold, 0),
+                   " (Group E)",
+                   
                    "\n",
                    "Three Valid Years from Pre (2007-2011) and Post (2013-2017) Periods"
                    )
@@ -794,6 +1033,10 @@ write.csv(
 saveRDS(
   df_alltime_mapb,
   "../Data_Derived/df_did_propalltime_mapb_filtered.rds")
+
+# !!!! ################
+# MOVE TO NEW SCRIPT ###############################
+# !!!! ################
 
 # 4) Basic DiD -----------
 
