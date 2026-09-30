@@ -47,6 +47,19 @@ vars_sum <- c(
   "soy_area"
 )
 
+# Description of filters
+desc_DiD <- 
+  "Filters: \n
+BOTH Groups A & E: 
+3/5 Years Pre/Post; 
+SD < 1Q; 
+Intl Trade <0.2 (A) >0.8 (E) \n
+
+ONLY Group E: 
+Mean Intl Trade >1Q; 
+Pre-Shock Big 6 Trade >0.5"
+
+
 # 1) Load TRASE & Clean --------------------
 
 ## 1.0) Initial Clean -----------
@@ -867,10 +880,12 @@ ggplot() +
                    "\n",
                    ">50% Trade from 'Big 6' Exporters during Pre Period"
                    ),
-    caption = paste0(
+    
+    subtitle = paste0(
       "Municipality Counts: Group E = ", scales::comma(n_E),
-      " | Group A = ", scales::comma(n_A)
-    )
+      " | Group A = ", scales::comma(n_A)),
+    
+    caption = desc_DiD
   ) +
   
   theme_void()
