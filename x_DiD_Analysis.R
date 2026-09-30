@@ -17,14 +17,20 @@ library(modelsummary)
 library(fixest)
 library(causaldata)
 
+# for DiD using attgt 
+library(did)
+library(ggpubr)
+
 # Set Constants ------
+
+### years ### 
 v_startyr <- 2007
 v_endyr <- 2017
-var_DiD <- "soy_area" 
 
-## 0.1) Load CSV from previous script -----
+### Load Source CSV from previous script ###
 
 df_did_source <- readRDS("../Data_Derived/df_did_propalltime_mapb_filtered.rds")
+names(df_did_source)
 
 # Notes:
 ## The logic here is:
@@ -32,6 +38,22 @@ df_did_source <- readRDS("../Data_Derived/df_did_propalltime_mapb_filtered.rds")
 ### Group E is our Treated as it is consistently and primarily international trade 
 ### Pre-Treatment is 2007-2011 average 
 ### Post-Treatment is 2013-2017 average
+
+### model information ###
+var_DiD <- "ha_3yr_trans_mapb" 
+
+desc_DiD <- 
+"Filters: \n
+BOTH Groups A & E: 
+3/5 Years Pre/Post; 
+SD < 1Q; 
+Intl Trade <0.2 (A) >0.8 (E) \n
+
+ONLY Group E: 
+Mean Intl Trade >1Q; 
+Pre-Shock Big 6 Trade >0.5"
+
+
 
 ## 0.2) Initial Formatting ----
 # Get groups in DiD format
@@ -107,7 +129,7 @@ df_did <- df_did_source %>%
 # DID <- ex_bef.aft.treated - ex_bef.aft.untreated
 # DID
 
-# ## 1.2.1) Analysis using Real Data & Manual --------
+### 1.2.1) Analysis using Real Data & Manual --------
 # 
 # # manual mean-mean for soy area for comparison
 # df_did_area_mean_yr <- df_did %>%
@@ -145,7 +167,7 @@ df_did <- df_did_source %>%
 # DID1_manual <- did1_bef.aft.treated - did1_bef.aft.untreated
 # DID1_manual
 
-## 1.2.2) Analysis using Real Data & Functions to test many variables --------
+### 1.2.2) Analysis using Real Data & Functions to test many variables --------
 
 # function to clean to mean-mean format 
 clean_did_4mean <- function(df, var, fun_muni_to_year = mean, fun_year_to_period = mean) {
@@ -264,7 +286,8 @@ plot_annual_summary <- function(df, var, fun = mean) {
       ),
       x = "Year",
       y = paste0(str_to_title(fun_name), " ", var),
-      color = "Group"
+      color = "Group",
+      caption = desc_DiD
     )+
     theme(legend.position = "bottom")+
     scale_color_manual(
@@ -347,6 +370,7 @@ plot_data <- function(
       x = "",
       y = x_y,
       fill = "Group",
+      caption = desc_DiD,
       color = "Group"
     )+
     theme(legend.position = "bottom")+
@@ -486,6 +510,8 @@ plot_did1_summary <- function(df, var, fun) {
       x = NULL,
       y = paste0(fun_name, " ", var),
       color = "Export Group",
+      caption = desc_DiD,
+      subtitle = paste0("DiD Estimate: ", round(did1_did, 0)),
       title = paste0("DiD for ", fun_name, " ", var, " by Group")
     ) +
     theme_light()
@@ -521,6 +547,8 @@ plot_did1_summary(
 
 ## 2.2) My Analysis with Municipalities ------
 
+### Prep data ### 
+
 # Treatment variable
 did2_area_allmuni <- df_did %>% 
   filter(destination == "TOTAL") %>% 
@@ -529,20 +557,15 @@ did2_area_allmuni <- df_did %>%
     Treated = group_alltime == "E" & period == "post_2012"
   )
 
-#### clustering on period #######
-# PICK UP HERE! #######
-
-
 # add indicators for treatment group and post-treatment
 did2_area_allmuni <- did2_area_allmuni %>%
   mutate(
     treat = if_else(group_alltime == "E", 1, 0),
     post  = if_else(period == "post_2012", 1, 0))
-# did2_1_clfe_clustperiod <- feols(
-#   as.formula(
-#     paste0(outcome_var, " ~ Treated | group_alltime + period")
-#   )soy_area ~ Treated | group_alltime + period,
-#                            data = did2_area_allmuni, vcov = ~period)
+
+
+### Run Models ###
+
 # linear model with interaction term
 m_did2_1_lmNoClust <- lm(
   as.formula(paste0(
@@ -569,159 +592,6 @@ modelsummary(
     "FE with SE clustered on Muni" = m_did2_1_ClustMuni),
   stars = c('*' = .1, '**' = .05, '***' = .01),
   notes = paste0("Dependent Var. = ", var_DiD))
-
-
-# regression with clustering on 'vcov' 
-# did2_1_clfe_clustperiod <- feols(
-#   as.formula(
-#     paste0(outcome_var, " ~ Treated | group_alltime + period")
-#   )soy_area ~ Treated | group_alltime + period,
-#                            data = did2_area_allmuni, vcov = ~period)
-did2_1_clfe_clustperiod <- feols(
-  soy_area ~ Treated | group_alltime + period,
-  data = did2_area_allmuni,
-  vcov = ~ period)
-
-
-### no clustering  #######
-did2_1_clfe_noclust <- feols(
-  soy_area ~ Treated | group_alltime + period,
-  data = did2_area_allmuni
-)
-
-### clustering on municipality #######
-did2_1_clfe_clustmuni <- feols(
-  soy_area ~ Treated | group_alltime + period,
-  data = did2_area_allmuni,
-  vcov = ~muni_id
-)
-
-### summary #######
-did2_1_models <- list(
-  "No clustering" = did2_1_clfe_noclust,
-  "Cluster: Period" = did2_1_clfe_clustperiod,
-  "Cluster: Municipality" = did2_1_clfe_clustmuni
-)
-
-modelsummary(
-  did2_1_models,
-  stars = c('*' = .1, '**' = .05, '***' = .01)
-)
-
-## Testing with explicit textbook regression
-did_2_1_textbook <- feols(
-    soy_area ~
-      group_alltime +
-      period +
-      group_alltime:period,
-    data = did2_area_allmuni
-  )
-
-did_2_1_textbook_lm <- lm(
-  soy_area ~
-    group_alltime +
-    period +
-    group_alltime:period,
-  data = did2_area_allmuni
-)
-
-did_2_1_textbook_clust_muni <- feols(
-  soy_area ~
-    group_alltime +
-    period +
-    group_alltime:period,
-  data = did2_area_allmuni,
-  vcov = ~muni_id
-)
-
-modelsummary(
-  list(
-    "FEOLS" = did_2_1_textbook, 
-    "LM" = did_2_1_textbook_lm,
-    "FEOLS Clustered Muni" = did_2_1_textbook_clust_muni),
-  stars = c('*' = .1, '**' = .05, '***' = .01)
-)
-
-### Testing why there are differences between models
-
-
-## 2.3) My Analysis with Municipalities & Land Conversion ------
-# Treatment variable
-
-#### clustering on period #######
-# regression with clustering on 'vcov' 
-did2_2_clfe_clustperiod <- feols(soy_area ~ Treated | group_alltime + period,
-                               data = did2_area_allmuni, vcov = ~period)
-
-### no clustering  #######
-did2_2_clfe_noclust <- feols(
-  soy_area ~ Treated | group_alltime + period,
-  data = did2_area_allmuni
-)
-
-### clustering on municipality #######
-did2_2_clfe_clustmuni <- feols(
-  soy_area ~ Treated | group_alltime + period,
-  data = did2_area_allmuni,
-  vcov = ~muni_id
-)
-
-### summary #######
-did2_models <- list(
-  "No clustering" = did2_2_clfe_noclust,
-  "Cluster: Period" = did2_2_clfe_clustperiod,
-  "Cluster: Municipality" = did2_2_clfe_clustmuni
-)
-
-modelsummary(
-  did2_models,
-  stars = c('*' = .1, '**' = .05, '***' = .01)
-)
-
-### why not the same?? ###
-
-did2_area_allmuni <- did2_area_allmuni %>%
-  mutate(
-    treat = if_else(group_alltime == "E", 1, 0),
-    post  = if_else(period == "post_2012", 1, 0)
-  )
-
-m1 <- feols(
-  soy_area ~ treat * post,
-  data = did2_area_allmuni,
-  vcov = ~ muni_id
-)
-
-# m2 <- feols(
-#   soy_area ~ I(treat * post) |
-#     treat + post,
-#   data = did2_area_allmuni,
-#   vcov = ~ muni_id
-# )
-
-# add indicators for treatment group and post-treatment
-did2_area_allmuni <- did2_area_allmuni %>%
-  mutate(
-    treat = if_else(group_alltime == "E", 1, 0),
-    post  = if_else(period == "post_2012", 1, 0))
-
-# linear model with interaction term
-m1_NoClust <- lm(
-  soy_area ~ treat:post + treat + post,
-  data = did2_area_allmuni)
-
-# model with SE clustered on municipality
-m1_ClustMuni <- feols(
-  soy_area ~ treat * post,
-  data = did2_area_allmuni,
-  vcov = ~ muni_id)
-
-# summary
-modelsummary(
-  list(
-    "m1" = m1_NoClust, 
-    "m1 Clustered SE on Muni" = m1_ClustMuni),
-  stars = c('*' = .1, '**' = .05, '***' = .01))
 
 
 # 3) Dynamic DiD ------
@@ -830,7 +700,7 @@ names(df_did)
 #   ) #%>% 
 #   #filter(year > 2012)
 
-test_df_attgt <- df_did %>%
+df_attgt <- df_did %>%
   filter(destination == "TOTAL") %>%
   #select(year, muni_id, soy_area, group_alltime) %>%
   mutate(
@@ -838,7 +708,7 @@ test_df_attgt <- df_did %>%
   )
 
 # estimate group-time average treatment effects without covariates
-test_attgt <- att_gt(
+m_attgt <- att_gt(
   #yname = "soy_area",
   yname = var_DiD,
   gname = "first.treat",
@@ -847,18 +717,28 @@ test_attgt <- att_gt(
   idname = "muni_id",
   tname = "year",
   xformla = ~1, # no covariates
-  data = test_df_attgt
+  data = df_attgt
 )
 
 
 # get summary
-summary(test_attgt)
+paste0(summary(m_attgt), "var_DiD = ", var_DiD)
 
 ## 3.2.1) Dynamic -----
 ## aggregate the group-time average treatment effects (this makes the most sense for my case!)
-test_attgt_dyn <- aggte(test_attgt, type = "dynamic")
-summary(test_attgt_dyn)
-ggdid(test_attgt_dyn)
+m_attgt_dyn <- aggte(m_attgt, type = "dynamic")
+paste0(summary(m_attgt_dyn), "var_DiD = ", var_DiD)
+
+# Generate the did plot
+p_m_attgt_dyn <- ggdid(m_attgt_dyn)
+
+# Add descriptive titles regarding variable and filters 
+annotate_figure(p_m_attgt_dyn, 
+                top = text_grob(paste0("Dynamic DiD for ", var_DiD), color = "black", face = "bold", size = 14),
+                bottom = text_grob(paste0(desc_DiD), color = "grey25", size = 10, hjust = 0, x = 0))
+
+m_att_gt_group_effects <- aggte(m_attgt, type = "group")
+paste0(summary(m_att_gt_group_effects), "var_DiD = ", var_DiD)
 
 ######################################################################
 # END ################################################################
@@ -867,73 +747,73 @@ ggdid(test_attgt_dyn)
 
 
 
-# XX) Other Tests --------
-## TWFE with annual data -----
-# NOTE: not using mean-mean here, just mean (i.e. annual data at the muni-year level)
-area_mean_yr <- df_did_area_mean_yr %>% 
-  filter(period != "2012") %>% 
-  mutate(
-    Treated = group_alltime == "E" &
-      period == "post_2012"
-    # year > 2012
-  )
-
-clfe_area_mean_yr <- feols(total_area ~ Treated | group_alltime + period,
-                           data = area_mean_yr, vcov = ~period)
-
-msummary(clfe_area_mean_yr, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
-
-## Basic linear model with interaction terms -----
-# run basic linear model with interaction terms 
-lm_area_mean_yr <- lm(total_area ~ group_alltime + period + Treated, data = area_mean_yr)
-summary(lm_area_mean_yr)
-
-# run linear model with indicator variables
-area_mean_yr_ind <- area_mean_yr %>% 
-  mutate(Ind_TreatmentGroup = if_else(group_alltime == "E", 1, 0)) %>% 
-  mutate(Ind_Period = if_else(period == "post_2012", 1, 0))
-
-lm_area_mean_yr_ind <- lm(total_area ~ Ind_TreatmentGroup + Ind_Period + Ind_TreatmentGroup*Ind_Period, data = area_mean_yr_ind)
-summary(lm_area_mean_yr_ind)
-
-msummary(lm_area_mean_yr_ind, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
-### ^ significant treatment (**), only n=20 though 
-
-
-# run linear model on mean year with indicator variables
-area_allmuni_ind <- area_allmuni %>% 
-  mutate(Ind_TreatmentGroup = if_else(group_alltime == "E", 1, 0)) %>% 
-  mutate(Ind_Period = if_else(period == "post_2012", 1, 0))
-
-lm_area_allmuni_ind <- lm(soy_area ~ Ind_TreatmentGroup + Ind_Period + Ind_TreatmentGroup*Ind_Period, data = area_allmuni_ind)
-summary(lm_area_allmuni_ind)
-
-msummary(lm_area_allmuni_ind, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
-
-# run basic linear model with interaction terms 
-lm_area_mean <- lm(soy_area ~ group_alltime + period + Treated, data = area_allmuni)
-summary(lm_area_mean)
-
-## XX) Functions to clean any variable to Mean-Mean format
-
-# X: Function for DiD Basic -----
-
-clean_did_4mean <- function(df, var, fun){
-  
-  # mean per year per export group 
-  df_mean_yr <- df %>%
-    filter(destination == "TOTAL") %>%
-    group_by(group_alltime, period, year) %>%
-    summarize(
-      value = fun(.data[[var]], na.rm = TRUE),
-      .groups = "drop"
-    )
-  
-  # calculate the mean 
-  df_mean_mean_yr <- df_mean_yr %>%
-    group_by(group_alltime, period) %>%
-    summarize(
-      value = fun(.data[[var]], na.rm = TRUE),
-      .groups = "drop"
-    )
-}
+# # XX) Other Tests --------
+# ## TWFE with annual data -----
+# # NOTE: not using mean-mean here, just mean (i.e. annual data at the muni-year level)
+# area_mean_yr <- df_did_area_mean_yr %>% 
+#   filter(period != "2012") %>% 
+#   mutate(
+#     Treated = group_alltime == "E" &
+#       period == "post_2012"
+#     # year > 2012
+#   )
+# 
+# clfe_area_mean_yr <- feols(total_area ~ Treated | group_alltime + period,
+#                            data = area_mean_yr, vcov = ~period)
+# 
+# msummary(clfe_area_mean_yr, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+# 
+# ## Basic linear model with interaction terms -----
+# # run basic linear model with interaction terms 
+# lm_area_mean_yr <- lm(total_area ~ group_alltime + period + Treated, data = area_mean_yr)
+# summary(lm_area_mean_yr)
+# 
+# # run linear model with indicator variables
+# area_mean_yr_ind <- area_mean_yr %>% 
+#   mutate(Ind_TreatmentGroup = if_else(group_alltime == "E", 1, 0)) %>% 
+#   mutate(Ind_Period = if_else(period == "post_2012", 1, 0))
+# 
+# lm_area_mean_yr_ind <- lm(total_area ~ Ind_TreatmentGroup + Ind_Period + Ind_TreatmentGroup*Ind_Period, data = area_mean_yr_ind)
+# summary(lm_area_mean_yr_ind)
+# 
+# msummary(lm_area_mean_yr_ind, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+# ### ^ significant treatment (**), only n=20 though 
+# 
+# 
+# # run linear model on mean year with indicator variables
+# area_allmuni_ind <- area_allmuni %>% 
+#   mutate(Ind_TreatmentGroup = if_else(group_alltime == "E", 1, 0)) %>% 
+#   mutate(Ind_Period = if_else(period == "post_2012", 1, 0))
+# 
+# lm_area_allmuni_ind <- lm(soy_area ~ Ind_TreatmentGroup + Ind_Period + Ind_TreatmentGroup*Ind_Period, data = area_allmuni_ind)
+# summary(lm_area_allmuni_ind)
+# 
+# msummary(lm_area_allmuni_ind, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
+# 
+# # run basic linear model with interaction terms 
+# lm_area_mean <- lm(soy_area ~ group_alltime + period + Treated, data = area_allmuni)
+# summary(lm_area_mean)
+# 
+# ## XX) Functions to clean any variable to Mean-Mean format
+# 
+# # X: Function for DiD Basic -----
+# 
+# clean_did_4mean <- function(df, var, fun){
+#   
+#   # mean per year per export group 
+#   df_mean_yr <- df %>%
+#     filter(destination == "TOTAL") %>%
+#     group_by(group_alltime, period, year) %>%
+#     summarize(
+#       value = fun(.data[[var]], na.rm = TRUE),
+#       .groups = "drop"
+#     )
+#   
+#   # calculate the mean 
+#   df_mean_mean_yr <- df_mean_yr %>%
+#     group_by(group_alltime, period) %>%
+#     summarize(
+#       value = fun(.data[[var]], na.rm = TRUE),
+#       .groups = "drop"
+#     )
+# }
