@@ -20,7 +20,7 @@ library(causaldata)
 # Set Constants ------
 v_startyr <- 2007
 v_endyr <- 2017
-
+var_DiD <- "soy_area" 
 
 ## 0.1) Load CSV from previous script -----
 
@@ -61,21 +61,21 @@ df_did <- df_did_source %>%
 # takes care of differences in group size between E and A
 # get just the relevant area and create the DiD groups 
 # mean per year per export group 
-df_did_area_mean_yr <- df_did %>%
-  filter(destination == "TOTAL") %>%
-  group_by(group_alltime, period, year) %>%
-  summarise(
-    total_area = mean(soy_area, na.rm = TRUE),
-    .groups = "drop"
-  ) 
-
-# calculate the mean 
-df_did_area_mean_meanyr <- df_did_area_mean_yr %>%
-  group_by(group_alltime, period) %>%
-  summarise(
-    mean_area = mean(total_area, na.rm = TRUE),
-    .groups = "drop"
-  ) 
+# df_did_area_mean_yr <- df_did %>%
+#   filter(destination == "TOTAL") %>%
+#   group_by(group_alltime, period, year) %>%
+#   summarise(
+#     total_area = mean(soy_area, na.rm = TRUE),
+#     .groups = "drop"
+#   ) 
+# 
+# # calculate the mean 
+# df_did_area_mean_meanyr <- df_did_area_mean_yr %>%
+#   group_by(group_alltime, period) %>%
+#   summarise(
+#     mean_area = mean(total_area, na.rm = TRUE),
+#     .groups = "drop"
+#   ) 
 
 ## 0.4) EDA Plotting with Function --------
 
@@ -155,7 +155,7 @@ clean_did_4mean <- function(df, var, fun_muni_to_year = mean, fun_year_to_period
     filter(destination == "TOTAL") %>%
     group_by(group_alltime, period, year) %>%
     summarise(
-      value = fun_muni_to_year({{ var }}, na.rm = TRUE),
+      value = fun_muni_to_year(.data[[var]], na.rm = TRUE),
       .groups = "drop"
     )
   
@@ -172,7 +172,7 @@ clean_did_4mean <- function(df, var, fun_muni_to_year = mean, fun_year_to_period
 
 did1_df <- clean_did_4mean(
   df = df_did, 
-  var = soy_area,
+  var = var_DiD,
   fun_muni_to_year = mean,
   fun_year_to_period = mean
   )
@@ -278,7 +278,7 @@ plot_annual_summary <- function(df, var, fun = mean) {
 # test fxn 
 plot_annual_summary(
   df = df_did,
-  var = "soy_area",
+  var = var_DiD,
   fun = mean
 )
 
@@ -370,7 +370,7 @@ plot_data <- function(
 
 plot_data(
   x_df = df_did,
-  x_y = "soy_area",
+  x_y = var_DiD,
   x_fun = mean,
   x_log10 = T
 )
@@ -495,7 +495,7 @@ plot_did1_summary <- function(df, var, fun) {
 # Call Function
 plot_did1_summary(
   df = df_did,
-  var = "soy_area",
+  var = var_DiD,
   fun = mean
 )
 
@@ -520,6 +520,7 @@ plot_did1_summary(
 # msummary(clfe, stars = c('*' = 0.1, '**' = 0.05, '***' = 0.01))
 
 ## 2.2) My Analysis with Municipalities ------
+
 # Treatment variable
 did2_area_allmuni <- df_did %>% 
   filter(destination == "TOTAL") %>% 
@@ -529,9 +530,58 @@ did2_area_allmuni <- df_did %>%
   )
 
 #### clustering on period #######
+# PICK UP HERE! #######
+
+
+# add indicators for treatment group and post-treatment
+did2_area_allmuni <- did2_area_allmuni %>%
+  mutate(
+    treat = if_else(group_alltime == "E", 1, 0),
+    post  = if_else(period == "post_2012", 1, 0))
+# did2_1_clfe_clustperiod <- feols(
+#   as.formula(
+#     paste0(outcome_var, " ~ Treated | group_alltime + period")
+#   )soy_area ~ Treated | group_alltime + period,
+#                            data = did2_area_allmuni, vcov = ~period)
+# linear model with interaction term
+m_did2_1_lmNoClust <- lm(
+  as.formula(paste0(
+    
+    var_DiD, " ~ treat:post + treat + post"  
+  
+    )),
+  data = did2_area_allmuni)
+
+# model with SE clustered on municipality
+m_did2_1_ClustMuni <- feols(
+  as.formula(paste0(
+    
+    var_DiD, "~ treat * post"
+    
+    )),
+  data = did2_area_allmuni,
+  vcov = ~ muni_id)
+
+# summary
+modelsummary(
+  list(
+    "Linear FE Model" = m_did2_1_lmNoClust,
+    "FE with SE clustered on Muni" = m_did2_1_ClustMuni),
+  stars = c('*' = .1, '**' = .05, '***' = .01),
+  notes = paste0("Dependent Var. = ", var_DiD))
+
+
 # regression with clustering on 'vcov' 
-did2_1_clfe_clustperiod <- feols(soy_area ~ Treated | group_alltime + period,
-                           data = did2_area_allmuni, vcov = ~period)
+# did2_1_clfe_clustperiod <- feols(
+#   as.formula(
+#     paste0(outcome_var, " ~ Treated | group_alltime + period")
+#   )soy_area ~ Treated | group_alltime + period,
+#                            data = did2_area_allmuni, vcov = ~period)
+did2_1_clfe_clustperiod <- feols(
+  soy_area ~ Treated | group_alltime + period,
+  data = did2_area_allmuni,
+  vcov = ~ period)
+
 
 ### no clustering  #######
 did2_1_clfe_noclust <- feols(
@@ -789,7 +839,8 @@ test_df_attgt <- df_did %>%
 
 # estimate group-time average treatment effects without covariates
 test_attgt <- att_gt(
-  yname = "soy_area",
+  #yname = "soy_area",
+  yname = var_DiD,
   gname = "first.treat",
   #gname = "group_alltime",
   #gname = "groupname_alltime",
