@@ -135,7 +135,8 @@ ls_big6 <- c(
 
 # Get proportion of municipal trade volume from these exporter groups in 2011
 soy_df_big6 <- soy_df %>%
-  filter(between(year, 2007, 2011)) %>%
+  # filter to the first year and one year before the shock
+  filter(between(year, v_startyr, v_treatment-1)) %>%
   group_by(
     #year,
     biome,
@@ -144,16 +145,16 @@ soy_df_big6 <- soy_df %>%
     muni_id
   ) %>%
   summarise(
-    exp_total = sum(trade_volume, na.rm = TRUE),
-    exp_big6 = sum(trade_volume[exporter_group %in% ls_big6], na.rm = TRUE),
-    exp_prop_big6 = exp_big6 / exp_total,
+    exp_total_pre = sum(trade_volume, na.rm = TRUE),
+    exp_big6_pre = sum(trade_volume[exporter_group %in% ls_big6], na.rm = TRUE),
+    exp_prop_big6_pre = exp_big6_pre / exp_total_pre,
     .groups = "drop"
   ) %>% 
-  select(muni_id, exp_total, exp_big6, exp_prop_big6)
+  select(muni_id, exp_total_pre, exp_big6_pre, exp_prop_big6_pre)
 
 
 # get one muni-year-importer value (because we didn't select the 'importer group' column)
-soy_df_sum <- soy_df %>%
+soy_df <- soy_df %>%
   group_by(
     year,
     biome,
@@ -177,7 +178,7 @@ soy_df_sum <- soy_df %>%
 # re-run without the export volume filter
 # add result to table
 
-soy_df_sum2 <- soy_df_sum %>% left_join(soy_df_big6, by = "")
+soy_df <- soy_df %>% left_join(soy_df_big6, by = "muni_id")
 
 ## 1.1) Add BR where missing to get proportions -----------
 
@@ -474,6 +475,10 @@ ggplot(trade_instability,
     x = "St. Dev. of Intl. Trade Proportions Per Municipality",
   )
 
+### Re-join proportion Big 6 to be used as another filter ###
+soy_df_split <- soy_df_split %>% left_join(soy_df_big6, by = "muni_id")
+
+
 ### Set threshold here ----------
 
 # set threshold based on 1st quartile of data ignoring SD of 0
@@ -504,8 +509,6 @@ v_trade_inst_q1 <- round(as.numeric(quantile(trade_instability$sd_prop_intl[trad
 #   )
 
 # Threshold for minimum mean international trade volume
-#x_intl_volume_threshold <- 1000
-x_intl_volume_threshold <- as.numeric(quantile(df_groupE$mean_intl_volume, 0.25))
 
 # Municipality-level data needed for Group E assignment
 df_groupE <- soy_df_split %>%
@@ -514,15 +517,20 @@ df_groupE <- soy_df_split %>%
     prop_intl_alltime,
     sd_prop_intl,
     mean_intl_volume,
+    #exp_prop_big6_pre,
     n_pre,
     n_post
   ) %>%
   filter(
     n_pre >= 3,
     n_post >= 3,
+    #exp_prop_big6_pre > 0.50
     prop_intl_alltime >= 0.80,
-    sd_prop_intl < v_trade_inst_q1
+    sd_prop_intl < v_trade_inst_q1,
   )
+
+#x_intl_volume_threshold <- 1000
+x_intl_volume_threshold <- as.numeric(quantile(df_groupE$mean_intl_volume, 0.25))
 
 # NEW filters
 soy_df_split2 <- soy_df_split %>%
@@ -540,7 +548,8 @@ soy_df_split2 <- soy_df_split %>%
       # Group E: consistently international and sufficiently large exporter
       prop_intl_alltime >= 0.80 &
         sd_prop_intl < v_trade_inst_q1 &
-        mean_intl_volume > x_intl_volume_threshold 
+        mean_intl_volume > x_intl_volume_threshold &
+        exp_prop_big6_pre > 0.50
       ~ "E",
       
       TRUE ~ NA_character_
@@ -801,6 +810,11 @@ colors_groups <- c(
 
 ### 2.3.1) Map of Groups Alltime -------
 
+# Count municipalities by group
+n_E <- sum(sf_map_alltime_munis$group_alltime == "E", na.rm = TRUE)
+n_A <- sum(sf_map_alltime_munis$group_alltime == "A", na.rm = TRUE)
+
+# Plot
 ggplot() +
   # Municipalities
   geom_sf(
@@ -848,8 +862,15 @@ ggplot() +
                    " (Group E)",
                    
                    "\n",
-                   "Three Valid Years from Pre (2007-2011) and Post (2013-2017) Periods"
-                   )
+                   "Three Valid Years from Pre (2007-2011) and Post (2013-2017) Periods",
+                   
+                   "\n",
+                   ">50% Trade from 'Big 6' Exporters during Pre Period"
+                   ),
+    caption = paste0(
+      "Municipality Counts: Group E = ", scales::comma(n_E),
+      " | Group A = ", scales::comma(n_A)
+    )
   ) +
   
   theme_void()
