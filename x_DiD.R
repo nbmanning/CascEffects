@@ -82,11 +82,6 @@ soy_df_source <- map_dfr(
 glimpse(soy_df_source)
 head(soy_df_source)
 
-# get one source file with just the Cerrado and 2012-2013 to test
-# soy_df_source_cerrado_2012013 <- soy_df_source %>% 
-#   filter(Biome == "CERRADO") %>% 
-#   filter(Year == 2012 | Year == 2013)
-
 # Clean soy_df
 soy_df <- soy_df_source %>% janitor::clean_names()
 
@@ -127,11 +122,7 @@ soy_df <- soy_df %>%
     between(year, v_startyr, v_endyr)
   )
 
-# get soy_df before summarizing - only 2012 and 2013
-# soy_df_presummary <- soy_df %>% 
-#   filter(biome == "CERRADO") %>% 
-#   filter(year == 2012 | year == 2013)
-
+## 1.1) Get 2011 soy from Big 6 ------
 # get proportion of soy traded in 2011 from the big 6 per municipality
 soy_df_2011 <- soy_df %>% filter(year == 2011)
 
@@ -146,7 +137,7 @@ ls_big6 <- c(
   "AMAGGI & LD COMMODITIES"
 )
 
-# Get proportion of municipal trade volume from these exporter groups in 2011
+# Get proportion of municipal trade volume from these exporter groups in 2007-2011
 soy_df_big6 <- soy_df %>%
   # filter to the first year and one year before the shock
   filter(between(year, v_startyr, v_treatment-1)) %>%
@@ -184,11 +175,11 @@ soy_df <- soy_df %>%
 
 # PICK UP HERE -----
 # Re-join
-# change soy_df_sum back to soy_df if it worked
-# Add >50% as a filter criteria later on 
-# re-run analysis with this criteria and the export volume > 1Q filter 
-# add result to table - maybe make a comprehensive result slide of important info? 
-# re-run without the export volume filter
+# change soy_df_sum back to soy_df if it worked -- DONE
+# Add >50% as a filter criteria later on -- DONE 
+# re-run analysis with this criteria and the export volume > 1Q filter --DONE 
+# add result to table - maybe make a comprehensive result slide of important info? --Eh...  not reproducible but useful for my own notes 
+# re-run without the export volume filter -- IN PROGRESS
 # add result to table
 
 soy_df <- soy_df %>% left_join(soy_df_big6, by = "muni_id")
@@ -310,17 +301,6 @@ soy_df_split %>%
 #   filter(muni_id %in% x_missing_years)
 # VERDICT: do NOT change missing to 0, accept them as missing from TRASE 
 
-# soy_df_split %>%
-#   group_by(biome, state, muni, muni_id, destination) %>%
-#   summarize(
-#     n_years = n_distinct(year),
-#     missing = max(year) - min(year) + 1 - n_years,
-#     .groups = "drop"
-#   ) %>%
-#   summarize(
-#     n_groups_missing = sum(missing > 0),
-#     total_missing_years = sum(missing)
-#   )
 
 # add missing years here so each municipality has every year from 2007-2017
 soy_df_split <- soy_df_split %>%
@@ -379,18 +359,17 @@ soy_df_split <- soy_df_split %>%
   ) %>%
   ungroup()
 
-### TO-DO: filter for municipalities exporting less than X? -----
-## Come back to this - need to figure out the groups first then I can filter
+# Get mean pre-shock international trade to eventually get Quartile spread
 mean_intl_volume <- soy_df_split %>%
   #filter(destination == "INTERNATIONAL") %>%
-  filter(destination == "INTERNATIONAL" & between(year, 2007, 2011)) %>%
+  filter(destination == "INTERNATIONAL" & between(year, v_startyr, v_treatment-1)) %>%
   group_by(muni_id) %>%
   summarize(
     mean_intl_volume = mean(trade_volume, na.rm = TRUE),
     .groups = "drop"
   )
 
-sum(is.na(as.matrix(mean_intl_volume)))
+# sum(is.na(as.matrix(mean_intl_volume)))
 
 # add mean intl. trade to df
 soy_df_split <- soy_df_split %>%
@@ -439,6 +418,10 @@ trade_instability <- soy_df_split %>%
     ),
     .groups = "drop"
   )
+
+# NEW NEW NEW WAY (after KF meeting): keep all but weight them differently based on the amount of data they have (not sure about this idea)
+# ^to-do (maybe...)
+
 
 # report the number of missing municipalities from this filter...
 trade_instability %>%
@@ -504,9 +487,8 @@ quantile(
   probs = c(0.25, 0.5, 0.75),
   na.rm = TRUE)
 
-# v_trade_instab_limit <- 0.2
-# v_trade_inst_q1 <- round(as.numeric(quantile(trade_instability$sd_prop_intl[trade_instability$sd_prop_intl > 0], 0.25, na.rm = T)), 5)
-
+# assign variable based on Intl. Trade Proportion Quartile (after removing the 0 intl. trade muni's)
+# v_trade_instab_limit <- 0.2 # <-- 0.2 was the old arbitrary assignment 
 v_trade_inst_q1 <- round(as.numeric(quantile(trade_instability$sd_prop_intl[trade_instability$sd_prop_intl > 0], 0.25, na.rm = T)), 3)
 
 # Pick up by removing NAs to only be left with muni's in groups A or E 
@@ -521,9 +503,10 @@ v_trade_inst_q1 <- round(as.numeric(quantile(trade_instability$sd_prop_intl[trad
 #     )
 #   )
 
-# Threshold for minimum mean international trade volume
 
-# Municipality-level data needed for Group E assignment
+
+### Calculate threshold for minimum mean international trade volume ###
+# Municipality-level data needed for separately calculating the threshold for Group E assignment
 df_groupE <- soy_df_split %>%
   distinct(
     muni_id,
@@ -542,6 +525,7 @@ df_groupE <- soy_df_split %>%
     sd_prop_intl < v_trade_inst_q1,
   )
 
+# calculate the threshold for Group E assignment
 #x_intl_volume_threshold <- 1000
 x_intl_volume_threshold <- as.numeric(quantile(df_groupE$mean_intl_volume, 0.25))
 
@@ -571,84 +555,11 @@ soy_df_split2 <- soy_df_split %>%
 
 # test group membership with new filters 
 table(soy_df_split2$group_alltime[soy_df_split2$destination=="TOTAL" & soy_df_split2$year==2013])
-# TEST ###########
+
+## 1.3) Optional sensitivity analysis for raw intl. trade volume threshold filter ###########
 thresh_max <- 200000
 thresh_int <- 250
 thresh_ex <- x_intl_volume_threshold
-
-# test_df_thresholds <- tibble(
-#   threshold = seq(0, thresh_max, by = thresh_int)
-# ) %>%
-#   rowwise() %>%
-#   mutate(
-#     n_groupE = trade_instability %>%
-#       left_join(
-#         mean_intl_volume,
-#         by = "muni_id"
-#       ) %>%
-#       left_join(
-#         soy_df_split %>%
-#           distinct(muni_id, prop_intl_alltime),
-#         by = "muni_id"
-#       ) %>%
-#       filter(
-#         prop_intl_alltime >= 0.80,
-#         sd_prop_intl < v_trade_inst_q1,
-#         mean_intl_volume > threshold
-#       ) %>%
-#       nrow()
-#   ) %>%
-#   ungroup()
-# 
-# ggplot(test_df_thresholds,
-#        aes(threshold, n_groupE)) +
-#   geom_line(linewidth = 1) +
-#   geom_vline(
-#     xintercept = thresh_ex,
-#     color = "red",
-#     linetype = "dashed"
-#   ) +
-#   labs(
-#     x = "Mean International Trade Volume Threshold",
-#     y = "Group E Municipalities",
-#     title = paste0("Sensitivity of Group E Sample Size to Volume Threshold",
-#                    "\n",
-#                    "Threshold Cutoff: ", thresh_ex)
-#   ) +
-#   theme_minimal()
-# 
-# 
-# # make interactive 
-# library(plotly)
-# 
-# p <- ggplot(
-#   test_df_thresholds,
-#   aes(
-#     x = threshold,
-#     y = n_groupE,
-#     text = paste0(
-#       "Threshold: ", threshold,
-#       "<br>Remaining: ", n_groupE
-#     )
-#   )
-# ) +
-#   geom_line(linewidth = 1) +
-#   geom_point(size = 2) +
-#   geom_vline(
-#     xintercept = 1000,
-#     linetype = "dashed",
-#     color = "red"
-#   ) +
-#   labs(
-#     x = "Mean International Trade Volume Threshold",
-#     y = "Municipalities Excluded",
-#     title = "Sensitivity of Municipality Inclusion to Volume Threshold"
-#   ) +
-#   theme_minimal()
-# 
-# ggplotly(p, tooltip = "text")
-
-
 
 # Evaluate a range of possible thresholds
 df_thresholds <- tibble(
@@ -730,31 +641,13 @@ ggplot(df_groupE,
   geom_vline(xintercept = quantile(df_groupE$mean_intl_volume, 0.25), color = "darkgreen") +
   scale_x_log10()
 
-############
 
-# set new filters as main df
+## 1.4) set new filters as main df ----
 soy_df_split <- soy_df_split2
 
 
-# ### check 2013 group E values for filtering above -----
-# x_2013 <- soy_df_split %>% 
-#   filter(year == 2013 & group_alltime == "E" & destination != "DOMESTIC")
-# 
-# x_testval <- 1000
-# x_2013_intl <- x_2013 %>% filter(destination=="INTERNATIONAL") %>% filter(trade_volume < x_testval)
-# 
-# # histogram
-# ggplot(x_2013_intl,
-#        aes(x = trade_volume)) +
-#   geom_histogram(bins = 50)+
-#   labs(
-#     x = "Intl. Trade Group E Muni's in 2013",
-#     title = paste0("Intl. Trade Group E 2013 Trade Volume filtered to < ", x_testval, 
-#                    "\n", "n = ", length(x_2013_intl))
-#   )
-
-
 # 2) Plot data pre-DiD ----------
+
 
 ## 2.0) Download Spatial Data form geobr -------
 # Get Municipalities, Mato Grosso municipalities, Mato Grosso State, and Cerrado Biome boundaries
